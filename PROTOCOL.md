@@ -37,12 +37,15 @@
 
 ### Readings command payload (0x00000064)
 
-#### Request
+#### Request (seems completely arbitrary)
 ```
-One VDC channels
+1 channel
 00000E1C  00 00 00 5c                                        ...\
-
-Six VDC channels
+2 channels
+00000E1C  00 00 00 52                                        ...R
+3 channels
+00000D64  00 00 00 4a                                        ...J
+6 channels
 00000EE8  00 00 00 38                                        ...8
 ```
 
