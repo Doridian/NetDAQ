@@ -48,29 +48,89 @@ class DAQConfigTrigger(Enum):
     EXTERNAL = 0x0100
 
 class DAQMeasuremenType(Enum):
-    OFF = 0x00
-    Ohm = 0x01
-    VDC = 0x02
+    OFF          = 0x00000000
+    Ohms         = 0x00000001
+    Ohms_4Wire   = 0x00000001
+    VDC          = 0x00000002
+    VAC          = 0x00000004
+    Frequency    = 0x00000008
+    RTD          = 0x00000010
+    Thermocouple = 0x00000020
+    Current      = 0x00010002
 
 class DAQRange(Enum):
-    RANGE_NONE = 0x00
+    NONE = 0x0000
+
     VDC_90mV   = 0x2001
+    VDC_300mV  = 0x2102
     VDC_3V     = 0x2308
+    VDC_30V    = 0x2410
+    VDC_AUTO   = 0x2520
+    VDC_50V    = 0x2640
+
+    VAC_300mV  = 0x3001
+    VAC_3V     = 0x3102
+    VAC_30V    = 0x3204
+    VAC_AUTO   = 0x3308
+
+    Ohms_300   = 0x1001
+    Ohms_3k    = 0x1102
+    Ohms_30k   = 0x1204
+    Ohms_300k  = 0x1308
+    Ohms_3M    = 0x1410
+    Ohms_AUTO  = 0x1520
+
+    TC_J = 0x6001
+    TC_K = 0x6101
+    TC_E = 0x6201
+    TC_T = 0x6301
+    TC_R = 0x6401
+    TC_S = 0x6501
+    TC_B = 0x6601
+    TC_C = 0x6701
+    TC_N = 0x6801
+
+    RTD_FIXED_385  = 0x5020
+    RTD_CUSTOM_385 = 0x5021
+
+    Frequency_AUTO = 0x0000
+
+    Current_20mA  = 0x2102
+    Current_100mA = 0x2520
 
 @dataclass(frozen=True)
 class DAQChannelConfiguration:
     mtype: DAQMeasuremenType = DAQMeasuremenType.OFF
-    range: DAQRange = DAQRange.RANGE_NONE
+    range: DAQRange = DAQRange.NONE
+
     aux2: float = 0.0 # RTD ALpha
     aux1: float = 0.0 # RTD R0 / Shunt resistance
-    extra_bits: int = 0
+    open_thermocouple_detect: bool = True
+
     alarm_bits: int = 0
     alarm1_level: float = 0.0
     alarm2_level: float = 0.0
     alarm1_digital: int = 0
     alarm2_digital: int = 0
+
     mxab_multuplier: float = 1.0
     mxab_offset: float = 0.0
+
+    def extra_bits(self) -> int:
+        if self.mtype == DAQMeasuremenType.Ohms:
+            return 0x9000
+        if self.mtype == DAQMeasuremenType.Ohms_4Wire or self.mtype == DAQMeasuremenType.RTD:
+            return 0x9001
+
+        if self.mtype == DAQMeasuremenType.Thermocouple:
+            return 0x0001 if self.open_thermocouple_detect else 0x0000
+
+        if self.mtype == DAQMeasuremenType.Current:
+            if self.range == DAQRange.Current_20mA:
+                return 0x7000
+            return 0x7001
+
+        return 0x0000
 
 @dataclass(frozen=True)
 class DAQConfiguration:
@@ -278,7 +338,7 @@ class NetDAQ:
                         self._make_int(chan.range.value) + \
                         self._make_float(chan.aux2) + \
                         self._make_float(chan.aux1) + \
-                        self._make_int(chan.extra_bits) + \
+                        self._make_int(chan.extra_bits()) + \
                         self._make_int(chan.alarm_bits) + \
                         self._make_float(chan.alarm1_level) + \
                         self._make_float(chan.alarm2_level) + \
@@ -296,7 +356,7 @@ class NetDAQ:
                         self._make_int(chan.range.value) + \
                         self._make_float(chan.aux2) + \
                         self._make_float(chan.aux1) + \
-                        self._make_int(chan.extra_bits) + \
+                        self._make_int(chan.extra_bits()) + \
                         self._make_int(chan.alarm_bits) + \
                         self._make_float(chan.alarm1_level) + \
                         self._make_float(chan.alarm2_level) + \

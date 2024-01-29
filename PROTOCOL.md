@@ -214,8 +214,11 @@ Interval 2.000
 - RTD Alpha 32-bit float
 - Shunt resistance / RTD R0 32-bit float
 - Extra configuration 4-byte
+    - 0x00 0x00 0x90 0x00 = 2 Wire mode (Ohms 2W)
     - 0x00 0x00 0x90 0x01 = 4 Wire mode (RTD 4W, Ohms 4W)
     - 0x00 0x00 0x00 0x01 = Open Thermocouple detect
+    - 0x00 0x00 0x70 0x01 = Current mode (0-100mA, Amps)
+    - 0x00 0x00 0x70 0x02 = Current mode (4-20mA, Percent)
 - Alarm 4-byte
     - Bit pattern (most significant first) of last 5 bits, all others 0:
         - Alarm 2 HI
