@@ -354,18 +354,18 @@ class NetDAQ:
 
     def set_config(self, config: DAQConfiguration) -> None:
         payload = self._make_int(config.bits()) + \
-                    bytes([0x00, 0x00, 0x00, 0x00]) + \
-                    bytes([0x00, 0x00, 0x00, 0x00]) + \
+                    b'\x00\x00\x00\x00' + \
+                    b'\x00\x00\x00\x00' + \
                     self._make_int(config.interval_time) + \
                     self._make_int(int(config.interval_time * 1000) % 1000) + \
-                    bytes([0x00, 0x00, 0x00, 0x00]) + \
-                    bytes([0x00, 0x00, 0x00, 0x00]) + \
+                    b'\x00\x00\x00\x00' + \
+                    b'\x00\x00\x00\x00' + \
                     self._make_int(config.alarm_time) + \
                     self._make_int(int(config.alarm_time * 1000) % 1000) + \
-                    bytes([0x00, 0x00, 0x00, 0x00]) + \
-                    bytes([0x00, 0x00, 0x00, 0x00]) + \
-                    bytes([0x00, 0x00, 0x00, 0x00]) + \
-                    bytes([0x00, 0x00, 0x00, 0x64])
+                    b'\x00\x00\x00\x00' + \
+                    b'\x00\x00\x00\x00' + \
+                    b'\x00\x00\x00\x00' + \
+                    b'\x00\x00\x00\x64'
 
         phy_channels = config.phy_channels
         if len(phy_channels) < self._CHANNEL_COUNT_PHY:
@@ -403,7 +403,7 @@ class NetDAQ:
                         self._make_float(chan.mxab_multuplier) + \
                         self._make_float(chan.mxab_offset)
 
-        payload = payload + bytes([0x00] * (2492 - len(payload)))
+        payload = payload + (b'\x00' * (2492 - len(payload)))
         self.send_rpc(NetDAQCommand.SET_CONFIG, payload)
         self.wait_for_idle()
 
