@@ -44,7 +44,7 @@ try:
     while True:
         readings = instrument.get_readings()
         for reading in readings:
-            print("Reading", reading.alarm_bitmask, reading.values, "%08x" % reading.dio)
+            print("Reading", reading.alarm_bitmask, reading.values, "%04x" % reading.dio)
         sleep(1)
 except KeyboardInterrupt:
     pass
