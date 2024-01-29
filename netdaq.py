@@ -406,6 +406,9 @@ class NetDAQ:
             self.send_rpc(NetDAQCommand.SET_MONITOR_CHANNEL, self._make_int(channel))
 
     def get_readings(self) -> list[DAQReading]:
+        # No idea what the payload here does, but the first 3 bytes must be 0
+        # and the last byte must not be zero, or we get no readings
+        # Maybe maximum number of readings to return?
         data = self.send_rpc(NetDAQCommand.GET_READINGS, b'\x00\x00\x00\xFF')
         result: list[DAQReading] = []
 
