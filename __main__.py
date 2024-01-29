@@ -47,7 +47,8 @@ try:
     while True:
         readings = instrument.get_readings()
         print(readings)
-        sleep(1)
+        if readings.instrument_queue == 0:
+            sleep(1)
 except KeyboardInterrupt:
     pass
 
