@@ -3,59 +3,63 @@
 from netdaq import NetDAQ, DAQConfigTrigger, DAQConfiguration, DAQMeasuremenType, DAQRange, DAQChannelConfiguration, DAQConfigAlarm
 from sys import argv
 from time import sleep
+from asyncio import run
 
-instrument = NetDAQ(argv[1], 4369)
-instrument.connect()
+async def main():
+    instrument = NetDAQ(argv[1], 4369)
+    await instrument.connect()
 
-instrument.ping()
-print("Base channel", instrument.get_base_channel())
-print("Version info", instrument.get_version_info())
+    await instrument.ping()
+    print("Base channel", await instrument.get_base_channel())
+    print("Version info", await instrument.get_version_info())
 
-instrument.wait_for_idle()
-instrument.stop()
-instrument.set_monitor_channel(0)
+    await instrument.wait_for_idle()
+    await instrument.stop()
+    await instrument.set_monitor_channel(0)
 
-print("LC version", instrument.get_lc_version())
+    print("LC version", await instrument.get_lc_version())
 
-instrument.set_time()
-print("Time set!")
+    await instrument.set_time()
+    print("Time set!")
 
-instrument.set_config(DAQConfiguration(
-    triggers=[DAQConfigTrigger.INTERVAL],
-    interval_time=0.25,
-    phy_channels=[
-        DAQChannelConfiguration(
-            mtype=DAQMeasuremenType.VDC,
-            range=DAQRange.VDC_3V,
-            alarm1_mode=DAQConfigAlarm.LOW,
-            alarm1_level=2.0,
-            alarm1_digital=5,
-            alarm2_mode=DAQConfigAlarm.LOW,
-            alarm2_level=-3.0,
-            alarm2_digital=6,
-        ),
-    ],
-    computed_channels=[],
-))
-print("Config set!")
+    await instrument.set_config(DAQConfiguration(
+        triggers=[DAQConfigTrigger.INTERVAL],
+        interval_time=0.25,
+        phy_channels=[
+            DAQChannelConfiguration(
+                mtype=DAQMeasuremenType.VDC,
+                range=DAQRange.VDC_3V,
+                alarm1_mode=DAQConfigAlarm.LOW,
+                alarm1_level=2.0,
+                alarm1_digital=5,
+                alarm2_mode=DAQConfigAlarm.LOW,
+                alarm2_level=-3.0,
+                alarm2_digital=6,
+            ),
+        ],
+        computed_channels=[],
+    ))
+    print("Config set!")
 
-instrument.reset_totalizer()
-instrument.start()
-instrument.set_monitor_channel(1)
+    await instrument.reset_totalizer()
+    await instrument.start()
+    await instrument.set_monitor_channel(1)
 
-try:
-    while True:
-        readings = instrument.get_readings()
-        print(readings)
-        if readings.instrument_queue == 0:
-            sleep(1)
-except KeyboardInterrupt:
-    pass
+    try:
+        while True:
+            readings = await instrument.get_readings()
+            print(readings)
+            if readings.instrument_queue == 0:
+                sleep(1)
+    except KeyboardInterrupt:
+        pass
 
-print("Clean shutdown...")
+    print("Clean shutdown...")
 
-instrument.set_monitor_channel(0)
-instrument.stop()
+    await instrument.set_monitor_channel(0)
+    await instrument.stop()
 
-instrument.close()
-print("Done!")
+    await instrument.close()
+    print("Done!")
+
+run(main())

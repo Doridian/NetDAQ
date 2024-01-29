@@ -211,28 +211,32 @@ class NetDAQ:
         self.sequence_id = 0x02
         self.sock = None
 
-    def close(self) -> None:
-        if not self.sock:
+    async def close(self) -> None:
+        sock = self.sock
+        if not sock:
             return
+        self.sock = None
 
         try:
-            self.stop()
+            await self.send_rpc(NetDAQCommand.STOP, sock=sock)
         except:
             pass
 
         try:
-            self.send_rpc(NetDAQCommand.CLOSE)
+            await self.send_rpc(NetDAQCommand.CLOSE, sock=sock)
         except:
             pass
 
-        self.sock.close()
+        sock.close()
 
-    def connect(self) -> None:
-        self.close()
+    async def connect(self) -> None:
+        await self.close()
 
-        self.sock = socket(AF_INET, SOCK_STREAM)
-        self.sock.connect((self.ip, self.port))
-        self.sock.settimeout(1)
+        sock = socket(AF_INET, SOCK_STREAM)
+        sock.connect((self.ip, self.port))
+        sock.settimeout(1)
+
+        self.sock = sock
 
     def _parse_int(self, data: bytes) -> int:
         return int.from_bytes(data[:self._INT_LEN], 'big')
@@ -277,7 +281,10 @@ class NetDAQ:
             return b'\x00\x00\x00\x00'
         return self._make_int(1 << bit)
 
-    def send_rpc(self, command: NetDAQCommand, payload: bytes = b'') -> bytes:
+    async def send_rpc(self, command: NetDAQCommand, payload: bytes = b'', sock: socket = None) -> bytes:
+        if not sock:
+            sock = self.sock
+
         sequence_id = self.sequence_id
         self.sequence_id += 1
 
@@ -287,10 +294,10 @@ class NetDAQ:
                     self._make_int(len(payload) + self._HEADER_LEN) + \
                     payload
 
-        self.sock.sendall(packet)
+        sock.sendall(packet)
 
 
-        response_header = self.sock.recv(len(self._FIXED_HEADER) + (self._INT_LEN * 3))
+        response_header = sock.recv(len(self._FIXED_HEADER) + (self._INT_LEN * 3))
         if response_header[0:len(self._FIXED_HEADER)] != self._FIXED_HEADER:
             raise Exception('Invalid response header')
         
@@ -301,7 +308,7 @@ class NetDAQ:
         response_payload_length = self._parse_int(response_header[12:])
 
         if response_payload_length > self._HEADER_LEN:
-            payload = self.sock.recv(response_payload_length - self._HEADER_LEN)
+            payload = sock.recv(response_payload_length - self._HEADER_LEN)
         else:
             payload = b''
 
@@ -311,17 +318,17 @@ class NetDAQ:
         
         return payload
 
-    def ping(self) -> None:
-        self.send_rpc(NetDAQCommand.PING)
+    async def ping(self) -> None:
+        await self.send_rpc(NetDAQCommand.PING)
 
-    def reset_totalizer(self) -> None:
-        self.send_rpc(NetDAQCommand.RESET_TOTALIZER)
+    async def reset_totalizer(self) -> None:
+        await self.send_rpc(NetDAQCommand.RESET_TOTALIZER)
 
-    def get_base_channel(self) -> int:
-        return self._parse_int(self.send_rpc(NetDAQCommand.GET_BASE_CHANNEL))
+    async def get_base_channel(self) -> int:
+        return self._parse_int(await self.send_rpc(NetDAQCommand.GET_BASE_CHANNEL))
 
-    def get_version_info(self, command: NetDAQCommand = NetDAQCommand.GET_VERSION_INFO) -> list[str]:
-        data = self.send_rpc(command)
+    async def get_version_info(self, command: NetDAQCommand = NetDAQCommand.GET_VERSION_INFO) -> list[str]:
+        data = await self.send_rpc(command)
         blobs = []
         current = []
         for i in data:
@@ -334,26 +341,26 @@ class NetDAQ:
             blobs.append(bytes(current))
         return blobs
 
-    def get_lc_version(self) -> str:
-        return self.get_version_info(command=NetDAQCommand.GET_LC_VERSION)
+    async def get_lc_version(self) -> str:
+        return await self.get_version_info(command=NetDAQCommand.GET_LC_VERSION)
 
-    def wait_for_idle(self) -> None:
+    async def wait_for_idle(self) -> None:
         while True:
-            status = self._parse_int(self.send_rpc(NetDAQCommand.STATUS_QUERY))
+            status = self._parse_int(await self.send_rpc(NetDAQCommand.STATUS_QUERY))
             if status & 0x80000000 == 0x00000000:
                 break
             sleep(0.01)
 
-    def set_time(self, time: datetime | None = None) -> None:
+    async def set_time(self, time: datetime | None = None) -> None:
         if not time:
             time = datetime.now()
 
         packet = self._make_time(time) + self._make_int(time.microsecond / 1000)
 
-        self.send_rpc(NetDAQCommand.SET_TIME, packet)
-        self.wait_for_idle()
+        await self.send_rpc(NetDAQCommand.SET_TIME, packet)
+        await self.wait_for_idle()
 
-    def set_config(self, config: DAQConfiguration) -> None:
+    async def set_config(self, config: DAQConfiguration) -> None:
         payload = self._make_int(config.bits()) + \
                     self._NULL_INTEGER + \
                     self._NULL_INTEGER + \
@@ -405,17 +412,17 @@ class NetDAQ:
                         self._make_float(chan.mxab_offset)
 
         payload = payload + (b'\x00' * (2492 - len(payload)))
-        self.send_rpc(NetDAQCommand.SET_CONFIG, payload)
-        self.wait_for_idle()
+        await self.send_rpc(NetDAQCommand.SET_CONFIG, payload)
+        await self.wait_for_idle()
 
-    def set_monitor_channel(self, channel: int) -> None:
+    async def set_monitor_channel(self, channel: int) -> None:
         if channel <= 0:
-            self.send_rpc(NetDAQCommand.CLEAR_MONITOR_CHANNEL)
+            await self.send_rpc(NetDAQCommand.CLEAR_MONITOR_CHANNEL)
         else:
-            self.send_rpc(NetDAQCommand.SET_MONITOR_CHANNEL, self._make_int(channel))
+            await self.send_rpc(NetDAQCommand.SET_MONITOR_CHANNEL, self._make_int(channel))
 
-    def get_readings(self, max_readings: int = 0xFF) -> DAQReadingResult:
-        data = self.send_rpc(NetDAQCommand.GET_READINGS, self._make_int(max_readings))
+    async def get_readings(self, max_readings: int = 0xFF) -> DAQReadingResult:
+        data = await self.send_rpc(NetDAQCommand.GET_READINGS, self._make_int(max_readings))
         result: list[DAQReading] = []
 
         chunk_length = self._parse_int(data[0:])
@@ -440,14 +447,14 @@ class NetDAQ:
 
         return DAQReadingResult(readings=result, instrument_queue=instrument_queue)
 
-    def stop(self) -> None:
+    async def stop(self) -> None:
         try:
-            self.send_rpc(NetDAQCommand.STOP)
+            await self.send_rpc(NetDAQCommand.STOP)
         except ResponseErrorCodeException:
             pass
 
-    def start(self) -> None:
-        self.send_rpc(NetDAQCommand.START, b'\x00' * 16)
+    async def start(self) -> None:
+        await self.send_rpc(NetDAQCommand.START, b'\x00' * 16)
 
-    def handshake(self) -> None:
-        self.ping()
+    async def handshake(self) -> None:
+        await self.ping()
