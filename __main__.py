@@ -49,7 +49,10 @@ try:
 except KeyboardInterrupt:
     pass
 
+print("Clean shutdown...")
+
 instrument.set_monitor_channel(0)
 instrument.stop()
 
 instrument.close()
+print("Done!")
