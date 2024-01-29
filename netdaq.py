@@ -112,13 +112,13 @@ class DAQChannelConfiguration:
     aux1: float = 0.0 # RTD R0 / Shunt resistance
     open_thermocouple_detect: bool = True
 
-    use_channel_as_alarm_trigger: bool = False
+    use_channel_as_alarm_trigger: bool = True
     alarm1_mode: DAQConfigAlarm = DAQConfigAlarm.OFF
     alarm2_mode: DAQConfigAlarm = DAQConfigAlarm.OFF
     alarm1_level: float = 0.0
     alarm2_level: float = 0.0
-    alarm1_digital: int = 0
-    alarm2_digital: int = 0
+    alarm1_digital: int | None = None
+    alarm2_digital: int | None = None
 
     mxab_multuplier: float = 1.0
     mxab_offset: float = 0.0
@@ -176,10 +176,15 @@ class DAQConfiguration:
 @dataclass(frozen=True)
 class DAQReading:
     time: datetime
+    dio: int # short
+    unk1: int # short
     alarm_bitmask: int
     null1: int
     null2: int
     values: list[float]
+
+    def get_dio_status(self, index: int) -> bool:
+        return self.dio & (1 << index) != 0
 
     def is_channel_alarm(self, index: int) -> bool:
         return self.alarm_bitmask & (1 << index) != 0
@@ -223,6 +228,9 @@ class NetDAQ:
     def _parse_int(self, data: bytes) -> int:
         return int.from_bytes(data[:self._INT_LEN], 'big')
 
+    def _parse_short(self, data: bytes) -> int:
+        return int.from_bytes(data[:2], 'big')
+
     def _make_int(self, value: int) -> None:
         return int.to_bytes(int(value), self._INT_LEN, 'big')
 
@@ -254,6 +262,11 @@ class NetDAQ:
             time.year % 100,
             0x00, # unknown value
         ])
+
+    def _make_optional_indexed_bit(self, bit: int | None) -> bytes:
+        if bit is None:
+            return b'\x00\x00\x00\x00'
+        return self._make_int(1 << bit)
 
     def send_rpc(self, command: NetDAQCommand, payload: bytes = b'') -> bytes:
         sequence_id = self.sequence_id
@@ -359,8 +372,8 @@ class NetDAQ:
                         self._make_int(chan.alarm_bits()) + \
                         self._make_float(chan.alarm1_level) + \
                         self._make_float(chan.alarm2_level) + \
-                        self._make_int(chan.alarm1_digital) + \
-                        self._make_int(chan.alarm2_digital) + \
+                        self._make_optional_indexed_bit(chan.alarm1_digital) + \
+                        self._make_optional_indexed_bit(chan.alarm2_digital) + \
                         self._make_float(chan.mxab_multuplier) + \
                         self._make_float(chan.mxab_offset)
 
@@ -377,8 +390,8 @@ class NetDAQ:
                         self._make_int(chan.alarm_bits()) + \
                         self._make_float(chan.alarm1_level) + \
                         self._make_float(chan.alarm2_level) + \
-                        self._make_int(chan.alarm1_digital) + \
-                        self._make_int(chan.alarm2_digital) + \
+                        self._make_optional_indexed_bit(chan.alarm1_digital) + \
+                        self._make_optional_indexed_bit(chan.alarm2_digital) + \
                         self._make_float(chan.mxab_multuplier) + \
                         self._make_float(chan.mxab_offset)
 
@@ -408,6 +421,8 @@ class NetDAQ:
 
             result.append(DAQReading(
                 time=self._parse_time(chunk_data[4:]),
+                dio=self._parse_short(chunk_data[12:]),
+                unk1=self._parse_short(chunk_data[14:]),
                 alarm_bitmask=self._parse_int(chunk_data[16:]),
                 null1=self._parse_int(chunk_data[20:]),
                 null2=self._parse_int(chunk_data[24:]),

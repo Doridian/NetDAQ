@@ -42,7 +42,9 @@ instrument.set_monitor_channel(1)
 
 try:
     while True:
-        print("Readings", instrument.get_readings())
+        readings = instrument.get_readings()
+        for reading in readings:
+            print("Reading", reading.alarm_bitmask, reading.values, "%08x" % reading.dio)
         sleep(1)
 except KeyboardInterrupt:
     pass
