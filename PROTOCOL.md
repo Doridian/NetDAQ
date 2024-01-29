@@ -84,16 +84,18 @@ Six enabled VDC channels, two readings
 00001054  bb c3 e6 6a bb ab 29 52  bb c0 ab 7a bb a5 54 cf   ...j..
 ```
 
-- 4-byte length (`28 + (channels * 4)` or `(7 + channels) * 4`)
+- 4-byte chunk length (`28 + (channels * 4)` or `(7 + channels) * 4`)
 - Number of readings 4-byte
 - 4-byte unknown/null
-- 0x00 0x00 0x00 0x10
-- Hours, Minutes, Seconds, Month, 0x00 (ignore), Day of month, 2-digit-Year, 0x02 (ignore)
-- 4-byte milliseconds, first two bytes 0x00 0xFF (should be ignored)
-- 4-byte unknown/null
-- 4-byte unknown/null
-- 4-byte unknown/null
-- readings as 32-bit floats
+- Repeated chunk for each reading
+    - 0x00 0x00 0x00 0x10
+    - Hours, Minutes, Seconds, Month
+    - 0x00 (ignore), Day of month, 2-digit-Year, 0x02 (ignore)
+    - 4-byte milliseconds, first two bytes 0x00 0xFF (should be ignored)
+    - 4-byte unknown/null
+    - 4-byte unknown/null
+    - 4-byte unknown/null
+    - channels values as 32-bit floats
 
 ### Configuration command payload (0x00000081)
 
