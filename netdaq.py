@@ -178,16 +178,19 @@ class DAQReading:
     time: datetime
     dio: int # short
     unk1: int # short
-    alarm_bitmask: int
-    null1: int
+    alarm1_bitmask: int
+    alarm2_bitmask: int
     null2: int
     values: list[float]
 
     def get_dio_status(self, index: int) -> bool:
         return self.dio & (1 << index) != 0
 
-    def is_channel_alarm(self, index: int) -> bool:
-        return self.alarm_bitmask & (1 << index) != 0
+    def is_channel_alarm1(self, index: int) -> bool:
+        return self.alarm1_bitmask & (1 << index) != 0
+
+    def is_channel_alarm2(self, index: int) -> bool:
+        return self.alarm1_bitmask & (1 << index) != 0
 
 @dataclass(frozen=True)
 class DAQReadingResult:
@@ -428,8 +431,8 @@ class NetDAQ:
                 time=self._parse_time(chunk_data[4:]),
                 dio=self._parse_short(chunk_data[12:]),
                 unk1=self._parse_short(chunk_data[14:]),
-                alarm_bitmask=self._parse_int(chunk_data[16:]),
-                null1=self._parse_int(chunk_data[20:]),
+                alarm1_bitmask=self._parse_int(chunk_data[16:]),
+                alarm2_bitmask=self._parse_int(chunk_data[20:]),
                 null2=self._parse_int(chunk_data[24:]),
                 values=[self._parse_float(chunk_data[i:]) for i in range(28, len(chunk_data), 4)],
             ))
