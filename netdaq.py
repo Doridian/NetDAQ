@@ -1,7 +1,7 @@
 from socket import socket, AF_INET, SOCK_STREAM
 from datetime import datetime
 from enum import Enum
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from struct import pack, unpack
 from time import sleep
 
@@ -46,6 +46,11 @@ class DAQConfigTrigger(Enum):
     INTERVAL = 0x0040
     ALARM    = 0x0080
     EXTERNAL = 0x0100
+
+class DAQConfigAlarm(Enum):
+    OFF  = 0x00
+    HIGH = 0x01
+    LOW  = 0x02
 
 class DAQMeasuremenType(Enum):
     OFF          = 0x00000000
@@ -107,7 +112,9 @@ class DAQChannelConfiguration:
     aux1: float = 0.0 # RTD R0 / Shunt resistance
     open_thermocouple_detect: bool = True
 
-    alarm_bits: int = 0
+    use_channel_as_alarm_trigger: bool = False
+    alarm1_mode: DAQConfigAlarm = DAQConfigAlarm.OFF
+    alarm2_mode: DAQConfigAlarm = DAQConfigAlarm.OFF
     alarm1_level: float = 0.0
     alarm2_level: float = 0.0
     alarm1_digital: int = 0
@@ -115,6 +122,12 @@ class DAQChannelConfiguration:
 
     mxab_multuplier: float = 1.0
     mxab_offset: float = 0.0
+
+    def alarm_bits(self) -> int:
+        result = 0x01 if self.use_channel_as_alarm_trigger else 0x00
+        result |= self.alarm1_mode.value << 1
+        result |= self.alarm2_mode.value << 3
+        return result
 
     def extra_bits(self) -> int:
         if self.mtype == DAQMeasuremenType.Ohms:
@@ -138,13 +151,13 @@ class DAQConfiguration:
     temperature_fahrenheit: bool = False
     trigger_out: bool = False
     drift_correction: bool = True
-    totalizer_debounce: bool
-    triggers: list[DAQConfigTrigger] = []
+    totalizer_debounce: bool = True
+    triggers: list[DAQConfigTrigger] = field(default_factory=lambda: [DAQConfigTrigger.INTERVAL])
 
     interval_time: float = 1.0
     alarm_time: float = 1.0
-    phy_channels: list[DAQChannelConfiguration] = []
-    computed_channels: list[DAQChannelConfiguration] = []
+    phy_channels: list[DAQChannelConfiguration] = field(default_factory=lambda: [])
+    computed_channels: list[DAQChannelConfiguration] = field(default_factory=lambda: [])
 
     def bits(self) -> int:
         result = self.speed.value
@@ -158,14 +171,18 @@ class DAQConfiguration:
             result |= DAQConfigBits.TOTALIZER_DEBOUNCE.value
         for trig in self.triggers:
             result |= trig.value
+        return result
 
 @dataclass(frozen=True)
 class DAQReading:
     time: datetime
+    alarm_bitmask: int
     null1: int
     null2: int
-    null3: int
     values: list[float]
+
+    def is_channel_alarm(self, index: int) -> bool:
+        return self.alarm_bitmask & (1 << index) != 0
 
 class NetDAQ:
     _FIXED_HEADER = bytearray([0x46, 0x45, 0x4C, 0x58])
@@ -339,7 +356,7 @@ class NetDAQ:
                         self._make_float(chan.aux2) + \
                         self._make_float(chan.aux1) + \
                         self._make_int(chan.extra_bits()) + \
-                        self._make_int(chan.alarm_bits) + \
+                        self._make_int(chan.alarm_bits()) + \
                         self._make_float(chan.alarm1_level) + \
                         self._make_float(chan.alarm2_level) + \
                         self._make_int(chan.alarm1_digital) + \
@@ -357,7 +374,7 @@ class NetDAQ:
                         self._make_float(chan.aux2) + \
                         self._make_float(chan.aux1) + \
                         self._make_int(chan.extra_bits()) + \
-                        self._make_int(chan.alarm_bits) + \
+                        self._make_int(chan.alarm_bits()) + \
                         self._make_float(chan.alarm1_level) + \
                         self._make_float(chan.alarm2_level) + \
                         self._make_int(chan.alarm1_digital) + \
@@ -391,9 +408,9 @@ class NetDAQ:
 
             result.append(DAQReading(
                 time=self._parse_time(chunk_data[4:]),
-                null1=self._parse_int(chunk_data[16:]),
-                null2=self._parse_int(chunk_data[20:]),
-                null3=self._parse_int(chunk_data[24:]),
+                alarm_bitmask=self._parse_int(chunk_data[16:]),
+                null1=self._parse_int(chunk_data[20:]),
+                null2=self._parse_int(chunk_data[24:]),
                 values=[self._parse_float(chunk_data[i:]) for i in range(28, len(chunk_data), 4)],
             ))
 

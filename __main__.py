@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from netdaq import NetDAQ, DAQConfigTrigger, DAQConfiguration, DAQMeasuremenType, DAQRange, DAQChannelConfiguration
+from netdaq import NetDAQ, DAQConfigTrigger, DAQConfiguration, DAQMeasuremenType, DAQRange, DAQChannelConfiguration, DAQConfigAlarm
 from sys import argv
 from time import sleep
 
@@ -27,10 +27,9 @@ instrument.set_config(DAQConfiguration(
         DAQChannelConfiguration(
             mtype=DAQMeasuremenType.VDC,
             range=DAQRange.VDC_3V,
-        ),
-        DAQChannelConfiguration(
-            mtype=DAQMeasuremenType.VDC,
-            range=DAQRange.VDC_3V,
+            alarm1_mode=DAQConfigAlarm.LOW,
+            alarm1_level=-2.0,
+            alarm1_digital=5,
         ),
     ],
     computed_channels=[],
