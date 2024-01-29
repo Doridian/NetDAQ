@@ -10,7 +10,7 @@
 ## Observation
 - Response command ID 0x00000000 for success or 0xFFFFFFFF with 4-byte error code
 - Response sequence ID == request sequence ID
-- All packets are specified MSB-first
+- All packets are specified MSB-first / BIG endian
 
 ## Command IDs
 - 0x00000000 = Handshake 1/6 (hello?), empty request, empty response
@@ -37,7 +37,7 @@
 
 ### Readings command payload (0x00000064)
 
-#### Request (seems completely arbitrary)
+#### Request
 ```
 1 channel
 00000E1C  00 00 00 5c                                        ...\
@@ -49,8 +49,7 @@
 00000EE8  00 00 00 38                                        ...8
 ```
 
-Diff = 0x24 = 36
-DiffResp = 0x14 = 20
+- Maximum number of readings to return 4-byte
 
 #### Response
 
@@ -84,18 +83,19 @@ Six enabled VDC channels, two readings
 00001054  bb c3 e6 6a bb ab 29 52  bb c0 ab 7a bb a5 54 cf   ...j..
 ```
 
-- 4-byte chunk length (`28 + (channels * 4)` or `(7 + channels) * 4`)
-- Number of readings 4-byte
-- 4-byte unknown/null
+- Chunk length 4-byte (`28 + (channels * 4)` or `(7 + channels) * 4`)
+- Readings in this packet 4-byte
+- Readings left on instrument after this query 4-byte
 - Repeated chunk for each reading
     - 0x00 0x00 0x00 0x10
     - Hours, Minutes, Seconds, Month
     - 0x00 (ignore), Day of month, 2-digit-Year, 0x02 (ignore)
     - 4-byte milliseconds, first two bytes 0x00 0xFF (should be ignored)
-    - 4-byte unknown/null
-    - 4-byte unknown/null
-    - 4-byte unknown/null
-    - channels values as 32-bit floats
+    - DIO status bitfield 2-byte
+    - 2-byte unknown (not null, changing)
+    - Alarm1 bitmask 4-byte
+    - Alarm2 bitmask 4-byte
+    - Channel values as 32-bit floats
 
 ### Configuration command payload (0x00000081)
 
