@@ -10,6 +10,7 @@ instrument.ping()
 print("Base channel", instrument.get_base_channel())
 print("Version info", instrument.get_version_info())
 
+instrument.wait_for_idle()
 instrument.stop()
 
 print("LC version", instrument.get_lc_version())

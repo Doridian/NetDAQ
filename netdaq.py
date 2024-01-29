@@ -143,13 +143,13 @@ class NetDAQ:
         ]) + self._make_int(time.microsecond / 1000)
 
         self.send_rpc(self.COMMAND_SET_TIME, packet)
+        self.wait_for_idle()
 
     def set_channels(self, config) -> None:
-        self.wait_for_idle()
         # TODO: All of this
+        self.wait_for_idle()
 
     def stop(self) -> None:
-        self.wait_for_idle()
         try:
             self.send_rpc(self.COMMAND_STOP)
         except ResponseErrorCodeException:
