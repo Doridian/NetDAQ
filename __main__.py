@@ -5,7 +5,7 @@ from sys import argv
 from asyncio import run, sleep
 
 async def main():
-    instrument = NetDAQ(argv[1], 4369)
+    instrument = NetDAQ(ip=argv[1], port=4369)
     await instrument.connect()
 
     try:
