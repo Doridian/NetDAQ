@@ -1,14 +1,15 @@
-from socket import socket, AF_INET, SOCK_STREAM
 from datetime import datetime
 from enum import Enum
 from dataclasses import dataclass, field
 from struct import pack, unpack
-from time import sleep
+from asyncio import sleep, open_connection, StreamReader, StreamWriter, get_event_loop, Future, Task, gather
+from traceback import print_exc
 
 class ResponseErrorCodeException(Exception):
-    def __init__(self, code: int) -> None:
+    def __init__(self, code: int, payload: bytes) -> None:
         super().__init__(f'Response error: {code:08x}')
         self.code = code
+        self.payload = payload
 
 class NetDAQCommand(Enum):
     PING                  = 0x00000000
@@ -205,38 +206,75 @@ class NetDAQ:
     _CHANNEL_COUNT_COMPUTED = 10
     _NULL_INTEGER = b'\x00' * _INT_LEN
 
+    ip: str
+    port: int
+    _sock_writer: StreamWriter | None = None
+    _reader_coroutine: Task | None = None
+    _response_futures: dict[int, Future[bytes]]
+
     def __init__(self, ip: str, port: int) -> None:
         self.ip = ip
         self.port = port
         self.sequence_id = 0x02
-        self.sock = None
 
-    async def close(self) -> None:
-        sock = self.sock
-        if not sock:
+        self._sock_writer = None
+        self._response_futures = {}
+
+    async def close(self, force: bool = False) -> None:
+        sock_writer = self._sock_writer
+        reader_coroutine = self._reader_coroutine
+        self._sock_writer = None
+        if not sock_writer:
             return
-        self.sock = None
 
+        if not force:
+            try:
+                clear_mon = self.send_rpc(NetDAQCommand.CLEAR_MONITOR_CHANNEL, writer=sock_writer)
+                stop = self.send_rpc(NetDAQCommand.STOP, writer=sock_writer)
+                close = self.send_rpc(NetDAQCommand.CLOSE, writer=sock_writer)
+                await gather(clear_mon, stop, close)
+            except:
+                pass
+
+        sock_writer.close()
+        await sock_writer.wait_closed()
+        if (not force) and reader_coroutine:
+            await reader_coroutine
+
+    async def _reader_coroutine_func(self, sock_reader: StreamReader) -> None:
         try:
-            await self.send_rpc(NetDAQCommand.STOP, sock=sock)
-        except:
-            pass
+            while True:
+                response_header = await sock_reader.readexactly(len(self._FIXED_HEADER) + (self._INT_LEN * 3))
+                if response_header[0:len(self._FIXED_HEADER)] != self._FIXED_HEADER:
+                    raise Exception('Invalid response header')
 
-        try:
-            await self.send_rpc(NetDAQCommand.CLOSE, sock=sock)
-        except:
-            pass
+                response_sequence_id = self._parse_int(response_header[4:])
 
-        sock.close()
+                response_code = self._parse_int(response_header[8:])
+                response_payload_length = self._parse_int(response_header[12:])
+
+                if response_payload_length > self._HEADER_LEN:
+                    payload = await sock_reader.readexactly(response_payload_length - self._HEADER_LEN)
+                else:
+                    payload = b''
+
+                response_future = self._response_futures.pop(response_sequence_id, None)
+                if (not response_future) or response_future.cancelled():
+                    print('Got unsolicited response, ignoring...', response_sequence_id, response_code, payload)
+                elif response_code != 0x00000000:
+                    response_future.set_exception(ResponseErrorCodeException(code=response_code, payload=payload))
+                else:
+                    response_future.set_result(payload)
+        except Exception:
+            print_exc()
+            await self.close(force=True)
 
     async def connect(self) -> None:
         await self.close()
 
-        sock = socket(AF_INET, SOCK_STREAM)
-        sock.connect((self.ip, self.port))
-        sock.settimeout(1)
-
-        self.sock = sock
+        reader, writer = await open_connection(self.ip, self.port)
+        self._sock_writer = writer
+        self._reader_coroutine = get_event_loop().create_task(self._reader_coroutine_func(sock_reader=reader))
 
     def _parse_int(self, data: bytes) -> int:
         return int.from_bytes(data[:self._INT_LEN], 'big')
@@ -281,9 +319,9 @@ class NetDAQ:
             return b'\x00\x00\x00\x00'
         return self._make_int(1 << bit)
 
-    async def send_rpc(self, command: NetDAQCommand, payload: bytes = b'', sock: socket = None) -> bytes:
-        if not sock:
-            sock = self.sock
+    async def send_rpc(self, command: NetDAQCommand, payload: bytes = b'', writer: StreamWriter = None) -> bytes:
+        if not writer:
+            writer = self._sock_writer
 
         sequence_id = self.sequence_id
         self.sequence_id += 1
@@ -293,30 +331,14 @@ class NetDAQ:
                     self._make_int(command.value) + \
                     self._make_int(len(payload) + self._HEADER_LEN) + \
                     payload
-
-        sock.sendall(packet)
-
-
-        response_header = sock.recv(len(self._FIXED_HEADER) + (self._INT_LEN * 3))
-        if response_header[0:len(self._FIXED_HEADER)] != self._FIXED_HEADER:
-            raise Exception('Invalid response header')
         
-        response_sequence_id = self._parse_int(response_header[4:])
-        if response_sequence_id != sequence_id:
-            raise Exception('Invalid response sequence id')
-        
-        response_payload_length = self._parse_int(response_header[12:])
+        response_future: Future[bytes] = get_event_loop().create_future()
+        self._response_futures[sequence_id] = response_future
 
-        if response_payload_length > self._HEADER_LEN:
-            payload = sock.recv(response_payload_length - self._HEADER_LEN)
-        else:
-            payload = b''
+        writer.write(packet)
+        await writer.drain()
 
-        response_command = self._parse_int(response_header[8:])
-        if response_command != 0x00000000:
-            raise ResponseErrorCodeException(response_command)
-        
-        return payload
+        return await response_future
 
     async def ping(self) -> None:
         await self.send_rpc(NetDAQCommand.PING)
@@ -349,7 +371,7 @@ class NetDAQ:
             status = self._parse_int(await self.send_rpc(NetDAQCommand.STATUS_QUERY))
             if status & 0x80000000 == 0x00000000:
                 break
-            sleep(0.01)
+            await sleep(0.01)
 
     async def set_time(self, time: datetime | None = None) -> None:
         if not time:
