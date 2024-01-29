@@ -13,19 +13,19 @@
 - All packets are specified MSB-first
 
 ## Command IDs
-- 0x00000000 = Handshake 1/6, empty request, empty response
+- 0x00000000 = Handshake 1/6 (hello?), empty request, empty response
 - 0x00000001 = Connection close, empty request, empty response
 - 0x00000002 = Status query, empty request, response [0x90/0x84/0x00 (0x90 = initializing, 0x84 = configuring, 0x00 = idle), 0x00, 0x00, 0x00]
 - 0x00000064 = Request readings, request 4-byte TODO, response variable length TODO
 - 0x00000067 = After 0x00000071 (likely START command), request 16-byte TODO, empty response
 - 0x00000068 = Handshake 4/6 (likely STOP command), empty request, empty response
-- 0x0000006A = Handshake 6/6, request time [Hours; Minutes; Seconds; Month; 0x08; Day; 2-digit-Year, 0x00], milliseconds 4-byte, empty response
-- 0x00000071 = After configuration idle, empty request, empty response
-- 0x00000072 = Handshake 3/6, empty request, response zero-terminated strings [Model name, DMM version, BM version, FA version, BA version]
+- 0x0000006A = Handshake 6/6 (set time), request time [Hours; Minutes; Seconds; Month; 0x08; Day; 2-digit-Year, 0x00], milliseconds 4-byte, empty response
+- 0x00000071 = After configuration idle (possibly clear totalizer), empty request, empty response
+- 0x00000072 = Handshake 3/6 (get version info), empty request, response zero-terminated strings [Model name, DMM version, BM version, FA version, BA version]
 - 0x00000075 = Set monitor channel, request 4-byte channel number, empty response
 - 0x00000076 = Turn off monitor channel, empty request, empty response
-- 0x00000077 = Handshake 2/6, empty request, response 4-byte base channel
-- 0x0000007F = Handshake 5/6, empty request, response zero-terminated string LC version
+- 0x00000077 = Handshake 2/6 (get base channel), empty request, response 4-byte base channel
+- 0x0000007F = Handshake 5/6 (get LC version), empty request, response zero-terminated string LC version
 - 0x00000081 = Configuration command, request see below, empty response
 
 ### Various command payloads
