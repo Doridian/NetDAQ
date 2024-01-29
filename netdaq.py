@@ -189,6 +189,11 @@ class DAQReading:
     def is_channel_alarm(self, index: int) -> bool:
         return self.alarm_bitmask & (1 << index) != 0
 
+@dataclass(frozen=True)
+class DAQReadingResult:
+    readings: list[DAQReading]
+    instrument_queue: int
+
 class NetDAQ:
     _FIXED_HEADER = bytearray([0x46, 0x45, 0x4C, 0x58])
     _HEADER_LEN = 16
@@ -405,16 +410,13 @@ class NetDAQ:
         else:
             self.send_rpc(NetDAQCommand.SET_MONITOR_CHANNEL, self._make_int(channel))
 
-    def get_readings(self) -> list[DAQReading]:
-        # No idea what the payload here does, but the first 3 bytes must be 0
-        # and the last byte must not be zero, or we get no readings
-        # Maybe maximum number of readings to return?
-        data = self.send_rpc(NetDAQCommand.GET_READINGS, b'\x00\x00\x00\xFF')
+    def get_readings(self, max_readings: int = 0xFF) -> DAQReadingResult:
+        data = self.send_rpc(NetDAQCommand.GET_READINGS, self._make_int(max_readings))
         result: list[DAQReading] = []
 
         chunk_length = self._parse_int(data[0:])
         chunk_count = self._parse_int(data[4:])
-        # 8:12 = unknown/null (possibly "measurements in instrument memory")
+        instrument_queue = self._parse_int(data[8:])
 
         chunks_buf = data[12:]
         for i in range(chunk_count):
@@ -432,7 +434,7 @@ class NetDAQ:
                 values=[self._parse_float(chunk_data[i:]) for i in range(28, len(chunk_data), 4)],
             ))
 
-        return result
+        return DAQReadingResult(readings=result, instrument_queue=instrument_queue)
 
     def stop(self) -> None:
         try:

@@ -22,7 +22,7 @@ print("Time set!")
 
 instrument.set_config(DAQConfiguration(
     triggers=[DAQConfigTrigger.INTERVAL],
-    interval_time=1.0,
+    interval_time=0.25,
     phy_channels=[
         DAQChannelConfiguration(
             mtype=DAQMeasuremenType.VDC,
@@ -43,8 +43,7 @@ instrument.set_monitor_channel(1)
 try:
     while True:
         readings = instrument.get_readings()
-        for reading in readings:
-            print("Reading", reading.alarm_bitmask, reading.values, "%04x" % reading.dio)
+        print(readings)
         sleep(1)
 except KeyboardInterrupt:
     pass
