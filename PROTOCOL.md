@@ -97,7 +97,7 @@ Six enabled VDC channels, two readings
 
 ### Configuration command payload (0x00000081)
 
-Packet always has total length of 2508 (0x09CC), padded with null-bytes
+Packet always has total length of 2508 (0x09CC), 30 channels always present, padded with null-bytes
 
 #### General config
 ```
