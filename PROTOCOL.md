@@ -23,7 +23,7 @@
 - 0x00000071 = After configuration idle, empty request, empty response
 - 0x00000072 = Handshake 3/6, empty request, response zero-terminated strings [Model name, DMM version, BM version, FA version, BA version]
 - 0x00000075 = Set monitor channel, request 4-byte channel number, empty response
-- 0x00000076 = Before 0x00000068 on teardown, empty request, empty response
+- 0x00000076 = Turn off monitor channel, empty request, empty response
 - 0x00000077 = Handshake 2/6, empty request, response 4-byte base channel
 - 0x0000007F = Handshake 5/6, empty request, response zero-terminated string LC version
 - 0x00000081 = Configuration command, request see below, empty response

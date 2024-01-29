@@ -18,4 +18,13 @@ print("LC version", instrument.get_lc_version())
 instrument.set_time()
 print("Time set!")
 
+# Configure channels
+
+# 0x71
+# 0x67
+# 0x64 .....
+
+# 0x76
+# 0x68
+
 instrument.close()
