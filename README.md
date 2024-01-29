@@ -1,7 +1,5 @@
 # Fluke 2640A/2645A NetDAQ
 
-See [`PROTOCOL.md`](PROTOCOL.md) for those efforts
-
 ## Library usage
 
 This library is undergoing heavy development at the moment and ease of use will be a focus once the whole protocol has been implemented
@@ -17,6 +15,8 @@ Service manual: [https://archive.org/details/FLUKE_2640A_2645A_Service](https://
 ## Protocol
 
 The protocol has been reverse engineered using the demo version of NetDAQ logger and Wireshark.
+
+See [`PROTOCOL.md`](PROTOCOL.md) for those efforts
 
 ## NetDAQ logger demo
 
