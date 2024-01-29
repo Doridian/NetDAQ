@@ -203,6 +203,7 @@ class NetDAQ:
     _INT_LEN = 4
     _CHANNEL_COUNT_PHY = 20
     _CHANNEL_COUNT_COMPUTED = 10
+    _NULL_INTEGER = b'\x00' * _INT_LEN
 
     def __init__(self, ip: str, port: int) -> None:
         self.ip = ip
@@ -354,17 +355,17 @@ class NetDAQ:
 
     def set_config(self, config: DAQConfiguration) -> None:
         payload = self._make_int(config.bits()) + \
-                    b'\x00\x00\x00\x00' + \
-                    b'\x00\x00\x00\x00' + \
+                    self._NULL_INTEGER + \
+                    self._NULL_INTEGER + \
                     self._make_int(config.interval_time) + \
                     self._make_int(int(config.interval_time * 1000) % 1000) + \
-                    b'\x00\x00\x00\x00' + \
-                    b'\x00\x00\x00\x00' + \
+                    self._NULL_INTEGER + \
+                    self._NULL_INTEGER + \
                     self._make_int(config.alarm_time) + \
                     self._make_int(int(config.alarm_time * 1000) % 1000) + \
-                    b'\x00\x00\x00\x00' + \
-                    b'\x00\x00\x00\x00' + \
-                    b'\x00\x00\x00\x00' + \
+                    self._NULL_INTEGER + \
+                    self._NULL_INTEGER + \
+                    self._NULL_INTEGER + \
                     b'\x00\x00\x00\x64'
 
         phy_channels = config.phy_channels
