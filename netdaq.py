@@ -411,7 +411,7 @@ class NetDAQ:
 
         chunk_length = self._parse_int(data[0:])
         chunk_count = self._parse_int(data[4:])
-        # 8:12 = unknown/null
+        # 8:12 = unknown/null (possibly "measurements in instrument memory")
 
         chunks_buf = data[12:]
         for i in range(chunk_count):
