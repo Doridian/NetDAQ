@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from netdaq import NetDAQ, DAQConfigBits, DAQConfiguration, DAQMeasuremenType, DAQRange, DAQChannelConfiguration
+from netdaq import NetDAQ, DAQConfigTrigger, DAQConfiguration, DAQMeasuremenType, DAQRange, DAQChannelConfiguration
 from sys import argv
 from time import sleep
 
@@ -21,9 +21,8 @@ instrument.set_time()
 print("Time set!")
 
 instrument.set_config(DAQConfiguration(
-    bits=DAQConfigBits.INTERVAL_TRIGGER.value | DAQConfigBits.DRIFT_CORRECTION.value | DAQConfigBits.TOTALIZER_DEBOUNCE.value,
+    triggers=[DAQConfigTrigger.INTERVAL],
     interval_time=1.0,
-    alarm_time=1.0,
     phy_channels=[
         DAQChannelConfiguration(
             mtype=DAQMeasuremenType.VDC,

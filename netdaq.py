@@ -37,6 +37,16 @@ class DAQConfigBits(Enum):
     ALARM_TRIGGER      = 0x0080
     EXTERNAL_TRIGGER   = 0x0100
 
+class DAQConfigSpeed(Enum):
+    SLOW   = 0x0000
+    MEDIUM = 0x0001
+    FAST   = 0x0002
+
+class DAQConfigTrigger(Enum):
+    INTERVAL = 0x0040
+    ALARM    = 0x0080
+    EXTERNAL = 0x0100
+
 class DAQMeasuremenType(Enum):
     OFF = 0x00
     Ohm = 0x01
@@ -62,13 +72,32 @@ class DAQChannelConfiguration:
     mxab_multuplier: float = 1.0
     mxab_offset: float = 0.0
 
-@dataclass
+@dataclass(frozen=True)
 class DAQConfiguration:
-    bits: int
-    interval_time: float
-    alarm_time: float
-    phy_channels: list[DAQChannelConfiguration]
-    computed_channels: list[DAQChannelConfiguration]
+    speed: DAQConfigSpeed = DAQConfigSpeed.SLOW
+    temperature_fahrenheit: bool = False
+    trigger_out: bool = False
+    drift_correction: bool = True
+    totalizer_debounce: bool
+    triggers: list[DAQConfigTrigger] = []
+
+    interval_time: float = 1.0
+    alarm_time: float = 1.0
+    phy_channels: list[DAQChannelConfiguration] = []
+    computed_channels: list[DAQChannelConfiguration] = []
+
+    def bits(self) -> int:
+        result = self.speed.value
+        if self.drift_correction or self.speed != DAQConfigSpeed.FAST:
+            result |= DAQConfigBits.DRIFT_CORRECTION.value
+        if self.trigger_out:
+            result |= DAQConfigBits.TRIGGER_OUT.value
+        if self.temperature_fahrenheit:
+            result |= DAQConfigBits.FAHRENHEIT.value
+        if self.totalizer_debounce:
+            result |= DAQConfigBits.TOTALIZER_DEBOUNCE.value
+        for trig in self.triggers:
+            result |= trig.value
 
 @dataclass(frozen=True)
 class DAQReading:
@@ -226,7 +255,7 @@ class NetDAQ:
         self.wait_for_idle()
 
     def set_config(self, config: DAQConfiguration) -> None:
-        payload = self._make_int(config.bits) + \
+        payload = self._make_int(config.bits()) + \
                     bytes([0x00, 0x00, 0x00, 0x00]) + \
                     bytes([0x00, 0x00, 0x00, 0x00]) + \
                     self._make_int(config.interval_time) + \
