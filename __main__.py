@@ -2,8 +2,7 @@
 
 from netdaq import NetDAQ, DAQConfigTrigger, DAQConfiguration, DAQMeasuremenType, DAQRange, DAQChannelConfiguration, DAQConfigAlarm
 from sys import argv
-from time import sleep
-from asyncio import run
+from asyncio import run, sleep
 
 async def main():
     instrument = NetDAQ(argv[1], 4369)
@@ -50,7 +49,7 @@ async def main():
             readings = await instrument.get_readings()
             print(readings)
             if readings.instrument_queue == 0:
-                sleep(1)
+                await sleep(1)
     finally:
         print("Clean shutdown...")
         await instrument.close()
