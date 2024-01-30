@@ -10,15 +10,17 @@ Seems to be a very simple stack-based language
 20*log(C1/C2)
 02 41 a0 00 00 01 00 01  01 00 02 08 0c 07 00
 02 float-20(4B) 01 channel-1(2B) 01 channel-2(2B) 08 0c 07 00
+PUSH 20.0; PUSH [1]; PUSH [2]; DIV; LOG; MUL; RET
 
 20*log(C2/C1)
 02 41 a0 00 00 01 00 02  01 00 01 08 0c 07 00
 02 float-20(4B) 01 channel-2(2B) 01 channel-1(2B) 08 0c 07 00
+PUSH 20.0; PUSH [2]; PUSH [1]; DIV; LOG; MUL; RET
 ```
 
 ## Opcodes (1 byte + variable immediate)
 
-- 0x00 = END program
+- 0x00 = END program (aka "return" top of stack)
 - 0x01 = PUSH the value of the following channel (2-byte integer) (`C1`)
 - 0x02 = PUSH following 4-byte float immediate (`1.234`)
 - 0x03 = ? (unused)
