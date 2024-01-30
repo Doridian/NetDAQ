@@ -18,7 +18,7 @@ Seems to be a very simple stack-based language
 
 ## Opcodes (1 byte + variable immediate)
 
-- 0x00 = end program
+- 0x00 = END program
 - 0x01 = PUSH the value of the following channel (2-byte integer) (`C1`)
 - 0x02 = PUSH following 4-byte float immediate (`1.234`)
 - 0x03 = ? (unused)
