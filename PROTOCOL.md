@@ -107,7 +107,7 @@ Six enabled VDC channels, two readings
 
 ### Configuration command payload (0x00000081)
 
-Packet always has total length of 2508 (0x09CC), 30 channels always present, padded with null-bytes if needed
+Packet always has total length of 2508 (0x09CC), 30 channels always present, followed by all equations, padded with null-bytes if needed
 
 #### General config
 ```
@@ -138,10 +138,11 @@ Equations
 
 20*log(C1/C2)
 02 41 a0 00 00 01 00 01  01 00 02 08 0c 07 00
+02 float-20(4B) 01 channel-1(2B) 01 channel-2(2B) 08 0c 07 00
 
 20*log(C2/C1)
 02 41 a0 00 00 01 00 02  01 00 01 08 0c 07 00
-
+02 float-20(4B) 01 channel-2(2B) 01 channel-1(2B) 08 0c 07 00
 ```
 
 - Configuration bits 4-byte
@@ -190,7 +191,7 @@ Equations
         - 0x00 0x00 0x80 0x01 = Average
         - 0x00 0x00 0x80 0x02 = A - B
         - 0x00 0x00 0x80 0x03 = A - Average
-        - 0x00 0x00 0x80 0x04 = Equation
+        - 0x00 0x00 0x80 0x04 = Equation (See [`EQUATIONS.md`](EQUATIONS.md))
 - Range 4-byte (computed channels use 0x00 0x00 0x00 0x00)
     - VDC
         - 0x00 0x00 0x20 0x01 = 90 mV
