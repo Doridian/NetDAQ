@@ -28,7 +28,12 @@
 - 0x0000007F = Handshake 5/6 (get LC version), empty request, response zero-terminated string LC version
 - 0x00000081 = Configuration command, request see below, empty response
 
-### Various command payloads
+## Remaining unknowns
+
+- Any command IDs except the ones documented above
+- Everything labelled "UNKNOWN" in this document
+
+## Various command payloads
 
 - 0x00000067 (payload seems constant)
     ```
@@ -87,12 +92,12 @@ Six enabled VDC channels, two readings
 - Readings in this packet 4-byte
 - Readings left on instrument after this query 4-byte
 - Repeated chunk for each reading
-    - 0x00 0x00 0x00 0x10
+    - 4-byte UNKNOWN (0x00 0x00 0x00 0x10)
     - Hours, Minutes, Seconds, Month
     - 0x00 (ignore), Day of month, 2-digit-Year, 0x02 (ignore)
     - 4-byte milliseconds, first two bytes 0x00 0xFF (should be ignored)
     - DIO status bitfield 2-byte
-    - 2-byte unknown (not null, changing)
+    - 2-byte UNKNOWN (not null, changing)
     - Alarm1 bitmask 4-byte
     - Alarm2 bitmask 4-byte
     - Totalizer count 4-byte
@@ -139,18 +144,18 @@ Interval 2.000
         - Fahrenheit (off for Celsius)
         - Fast (set neither for "Slow")
         - Medium (set neither for "Slow")
-- 4-byte unknown/null
-- 4-byte unknown/null
+- 4-byte UNKNOWN (null)
+- 4-byte UNKNOWN (null)
 - Interval time whole seconds 4-byte
 - Interval time milliseconds 4-byte
-- 4-byte unknown/null
-- 4-byte unknown/null
+- 4-byte UNKNOWN (null)
+- 4-byte UNKNOWN (null)
 - Alarm time whole seconds 4-byte
 - Alarm time milliseconds 4-byte
-- 4-byte unknown/null
-- 4-byte unknown/null
-- 4-byte unknown/null
-- 0x00 0x00 0x00 0x64
+- 4-byte UNKNOWN (null)
+- 4-byte UNKNOWN (null)
+- 4-byte UNKNOWN (null)
+- 4-byte UNKNOWN (0x00 0x00 0x00 0x64)
 
 #### Per-channel config
 ```
