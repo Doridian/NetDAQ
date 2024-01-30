@@ -95,6 +95,7 @@ Six enabled VDC channels, two readings
     - 2-byte unknown (not null, changing)
     - Alarm1 bitmask 4-byte
     - Alarm2 bitmask 4-byte
+    - Totalizer count 4-byte
     - Channel values as 32-bit floats
 
 ### Configuration command payload (0x00000081)

@@ -181,7 +181,7 @@ class DAQReading:
     unk1: int # short
     alarm1_bitmask: int
     alarm2_bitmask: int
-    null1: int
+    totalizer: int
     values: list[float]
 
     def get_dio_status(self, index: int) -> bool:
@@ -466,7 +466,7 @@ class NetDAQ:
                 unk1=self._parse_short(chunk_data[14:]),
                 alarm1_bitmask=self._parse_int(chunk_data[16:]),
                 alarm2_bitmask=self._parse_int(chunk_data[20:]),
-                null1=self._parse_int(chunk_data[24:]),
+                totalizer=self._parse_int(chunk_data[24:]),
                 values=[self._parse_float(chunk_data[i:]) for i in range(28, len(chunk_data), 4)],
             ))
 
