@@ -20,11 +20,13 @@
 - 0x00000067 = After 0x00000071 (likely START command), request 16-byte TODO, empty response
 - 0x00000068 = Handshake 4/6 (likely STOP command), empty request, empty response
 - 0x0000006A = Handshake 6/6 (set time), request time [Hours; Minutes; Seconds; Month; 0x08; Day; 2-digit-Year, 0x00], milliseconds 4-byte, empty response
+- 0x0000006F = Query spy channel, request 4-byte channel, response 4-byte float value
 - 0x00000071 = After configuration idle (possibly clear totalizer), empty request, empty response
 - 0x00000072 = Handshake 3/6 (get version info), empty request, response zero-terminated strings [Model name, DMM version, BM version, FA version, BA version]
 - 0x00000075 = Set monitor channel, request 4-byte channel number, empty response
 - 0x00000076 = Turn off monitor channel, empty request, empty response
 - 0x00000077 = Handshake 2/6 (get base channel), empty request, response 4-byte base channel
+- 0x0000007D = Likely disable spy mode, empty request, empty response
 - 0x0000007F = Handshake 5/6 (get LC version), empty request, response zero-terminated string LC version
 - 0x00000081 = Configuration command, request see below, empty response
 
@@ -105,7 +107,7 @@ Six enabled VDC channels, two readings
 
 ### Configuration command payload (0x00000081)
 
-Packet always has total length of 2508 (0x09CC), 30 channels always present, padded with null-bytes
+Packet always has total length of 2508 (0x09CC), 30 channels always present, padded with null-bytes if needed
 
 #### General config
 ```
@@ -131,6 +133,17 @@ Interval 2.000
 000001BC  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 05   ........ ........
 000001CC  00 00 02 a6 00 00 00 00  00 00 00 00 00 00 00 00   ........ ........
 000001DC  00 00 00 64
+
+Equations
+
+20*log(C1/C2)
+            02 41 a0 00  00 01 00 01 01 00 02 08   .....A.. ........
+0c 07 00                                           ...
+
+20*log(C2/C1)
+         02 41 a0 00 00  01 00 02 01 00 01 08 0c      .A... ........
+07 00                                                 ..
+
 ```
 
 - Configuration bits 4-byte
@@ -166,15 +179,21 @@ Interval 2.000
 ```
 
 - Type 4-byte
-    - 0x00 0x00 0x00 0x00 = OFF
-    - 0x00 0x00 0x00 0x01 = Ohms
-    - 0x00 0x00 0x00 0x02 = VDC
-    - 0x00 0x00 0x00 0x04 = VAC
-    - 0x00 0x00 0x00 0x08 = Frequency
-    - 0x00 0x00 0x00 0x10 = RTD
-    - 0x00 0x00 0x00 0x20 = Thermocouple
-    - 0x00 0x01 0x00 0x02 = Current
-- Range 4-byte
+    - Analog channels
+        - 0x00 0x00 0x00 0x00 = OFF
+        - 0x00 0x00 0x00 0x01 = Ohms
+        - 0x00 0x00 0x00 0x02 = VDC
+        - 0x00 0x00 0x00 0x04 = VAC
+        - 0x00 0x00 0x00 0x08 = Frequency
+        - 0x00 0x00 0x00 0x10 = RTD
+        - 0x00 0x00 0x00 0x20 = Thermocouple
+        - 0x00 0x01 0x00 0x02 = Current
+    - Computed channels
+        - 0x00 0x00 0x80 0x01 = Average
+        - 0x00 0x00 0x80 0x02 = A - B
+        - 0x00 0x00 0x80 0x03 = A - Average
+        - 0x00 0x00 0x80 0x04 = Equation
+- Range 4-byte (computed channels use 0x00 0x00 0x00 0x00)
     - VDC
         - 0x00 0x00 0x20 0x01 = 90 mV
         - 0x00 0x00 0x21 0x02 = 300 mV
@@ -217,14 +236,33 @@ Interval 2.000
     - Current
         - 0x00 0x00 0x21 0x02 = 4-20 mA
         - 0x00 0x00 0x25 0x20 = 0-100 mA
-- RTD Alpha 32-bit float
-- Shunt resistance / RTD R0 32-bit float
-- Extra configuration 4-byte
-    - 0x00 0x00 0x90 0x00 = 2 Wire mode (Ohms 2W)
-    - 0x00 0x00 0x90 0x01 = 4 Wire mode (RTD 4W, Ohms 4W)
-    - 0x00 0x00 0x00 0x01 = Open Thermocouple detect
-    - 0x00 0x00 0x70 0x01 = Current mode (0-100mA, Amps)
-    - 0x00 0x00 0x70 0x02 = Current mode (4-20mA, Percent)
+- Extra configuration
+    - Analog channels
+        - RTD Alpha 32-bit float
+        - Shunt resistance / RTD R0 32-bit float
+        - Extra configuration 4-byte
+            - 0x00 0x00 0x90 0x00 = 2 Wire mode (Ohms 2W)
+            - 0x00 0x00 0x90 0x01 = 4 Wire mode (RTD 4W, Ohms 4W)
+            - 0x00 0x00 0x00 0x01 = Open Thermocouple detect
+            - 0x00 0x00 0x70 0x01 = Current mode (0-100mA, Amps)
+            - 0x00 0x00 0x70 0x02 = Current mode (4-20mA, Percent)
+    - Computed channels
+        - Average
+            - 0x00 0x00 0x00 0x00
+            - 0x00 0x00 0x00 0x00
+            - Averaged channels bitmask 4-byte
+        - A - B
+            - Channel A 4-byte
+            - 0x00 0x00 0x00 0x00
+            - Channel B 4-byte
+        - A - Average
+            - Channel A 4-byte
+            - 0x00 0x00 0x00 0x00
+            - Averaged channels bitmask 4-byte
+        - Equation
+            - 0x00 0x00 0x00 0x00
+            - 0x00 0x00 0x00 0x00
+            - Offset of equation in trailer 4-byte
 - Alarm 4-byte
     - Bit pattern (most significant first) of last 5 bits, all others 0:
         - Alarm 2 HI

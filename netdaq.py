@@ -19,11 +19,13 @@ class NetDAQCommand(Enum):
     START                 = 0x00000067
     STOP                  = 0x00000068
     SET_TIME              = 0x0000006A
+    QUERY_SPY             = 0x0000006F
     RESET_TOTALIZER       = 0x00000071
     GET_VERSION_INFO      = 0x00000072
     SET_MONITOR_CHANNEL   = 0x00000075
     CLEAR_MONITOR_CHANNEL = 0x00000076
     GET_BASE_CHANNEL      = 0x00000077
+    DISABLE_SPY           = 0x0000007D
     GET_LC_VERSION        = 0x0000007F
     SET_CONFIG            = 0x00000081
 
@@ -53,8 +55,12 @@ class DAQConfigAlarm(Enum):
     HIGH = 0x01
     LOW  = 0x02
 
+MEASUREMENT_COMPUTED_BIT = 0x00008000
+
 class DAQMeasuremenType(Enum):
     OFF          = 0x00000000
+
+    # Analog channels
     Ohms         = 0x00000001
     Ohms_4Wire   = 0x00000001
     VDC          = 0x00000002
@@ -63,6 +69,12 @@ class DAQMeasuremenType(Enum):
     RTD          = 0x00000010
     Thermocouple = 0x00000020
     Current      = 0x00010002
+
+    # Computed channels
+    Average      = 0x00008001
+    AminusB      = 0x00008002
+    AminusAvg    = 0x00008003
+    Equation     = 0x00008004
 
 class DAQRange(Enum):
     NONE = 0x0000
@@ -109,9 +121,13 @@ class DAQChannelConfiguration:
     mtype: DAQMeasuremenType = DAQMeasuremenType.OFF
     range: DAQRange = DAQRange.NONE
 
-    aux2: float = 0.0 # RTD ALpha
-    aux1: float = 0.0 # RTD R0 / Shunt resistance
+    aux1: float = 0.0 # RTD ALpha
+    aux2: float = 0.0 # RTD R0 / Shunt resistance
     open_thermocouple_detect: bool = True
+
+    computed_aux1: int = 0
+    computed_aux2: int = 0
+    computed_aux3: int = 0
 
     use_channel_as_alarm_trigger: bool = True
     alarm1_mode: DAQConfigAlarm = DAQConfigAlarm.OFF
@@ -157,7 +173,7 @@ class DAQConfiguration:
 
     interval_time: float = 1.0
     alarm_time: float = 1.0
-    phy_channels: list[DAQChannelConfiguration] = field(default_factory=lambda: [])
+    analog_channels: list[DAQChannelConfiguration] = field(default_factory=lambda: [])
     computed_channels: list[DAQChannelConfiguration] = field(default_factory=lambda: [])
 
     def bits(self) -> int:
@@ -201,7 +217,7 @@ class NetDAQ:
     _FIXED_HEADER = bytes([0x46, 0x45, 0x4C, 0x58])
     _HEADER_LEN = 16
     _INT_LEN = 4
-    _CHANNEL_COUNT_PHY = 20
+    _CHANNEL_COUNT_ANALOG = 20
     _CHANNEL_COUNT_COMPUTED = 10
     _NULL_INTEGER = b'\x00' * _INT_LEN
 
@@ -234,13 +250,8 @@ class NetDAQ:
 
         try:
             _ = await self.send_rpc(NetDAQCommand.CLEAR_MONITOR_CHANNEL, writer=sock_writer, wait_response=False)
-        except:
-            pass
-        try:
             _ = await self.send_rpc(NetDAQCommand.STOP, writer=sock_writer, wait_response=False)
-        except:
-            pass
-        try:
+            _ = await self.send_rpc(NetDAQCommand.DISABLE_SPY, writer=sock_writer, wait_response=False)
             _ = await self.send_rpc(NetDAQCommand.CLOSE, writer=sock_writer, wait_response=False)
         except:
             pass
@@ -412,15 +423,15 @@ class NetDAQ:
                     self._NULL_INTEGER + \
                     b'\x00\x00\x00\x64'
 
-        phy_channels = config.phy_channels
-        if len(phy_channels) < self._CHANNEL_COUNT_PHY:
-            phy_channels += [DAQChannelConfiguration() for _ in range(self._CHANNEL_COUNT_PHY - len(phy_channels))]
+        analog_channels = config.analog_channels
+        if len(analog_channels) < self._CHANNEL_COUNT_ANALOG:
+            analog_channels += [DAQChannelConfiguration() for _ in range(self._CHANNEL_COUNT_ANALOG - len(analog_channels))]
 
-        for chan in phy_channels:
+        for chan in analog_channels:
             payload += self._make_int(chan.mtype.value) + \
                         self._make_int(chan.range.value) + \
-                        self._make_float(chan.aux2) + \
                         self._make_float(chan.aux1) + \
+                        self._make_float(chan.aux2) + \
                         self._make_int(chan.extra_bits()) + \
                         self._make_int(chan.alarm_bits()) + \
                         self._make_float(chan.alarm1_level) + \
@@ -437,9 +448,9 @@ class NetDAQ:
         for chan in computed_channels:
             payload += self._make_int(chan.mtype.value) + \
                         self._make_int(chan.range.value) + \
-                        self._make_float(chan.aux2) + \
-                        self._make_float(chan.aux1) + \
-                        self._make_int(chan.extra_bits()) + \
+                        self._make_int(chan.computed_aux1) + \
+                        self._make_int(chan.computed_aux2) + \
+                        self._make_int(chan.computed_aux3) + \
                         self._make_int(chan.alarm_bits()) + \
                         self._make_float(chan.alarm1_level) + \
                         self._make_float(chan.alarm2_level) + \
@@ -482,6 +493,12 @@ class NetDAQ:
             ))
 
         return DAQReadingResult(readings=result, instrument_queue=instrument_queue)
+
+    async def stop_spy(self) -> None:
+        _ = await self.send_rpc(NetDAQCommand.DISABLE_SPY)
+
+    async def query_spy(self, channel: int) -> float:
+        return self._parse_float(await self.send_rpc(NetDAQCommand.QUERY_SPY, self._make_int(channel)))
 
     async def stop(self) -> None:
         try:
