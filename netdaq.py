@@ -2,7 +2,7 @@ from datetime import datetime
 from enum import Enum
 from dataclasses import dataclass, field
 from struct import pack, unpack
-from asyncio import sleep, open_connection, StreamReader, StreamWriter, get_event_loop, Future, Task, gather
+from asyncio import sleep, open_connection, StreamReader, StreamWriter, get_event_loop, Future, Task, CancelledError
 from traceback import print_exc
 
 class ResponseErrorCodeException(Exception):
@@ -178,7 +178,6 @@ class DAQConfiguration:
 class DAQReading:
     time: datetime
     dio: int # short
-    unk1: int # short
     alarm1_bitmask: int
     alarm2_bitmask: int
     totalizer: int
@@ -221,26 +220,33 @@ class NetDAQ:
         self._sock_writer = None
         self._response_futures = {}
 
-    async def close(self, force: bool = False) -> None:
-        sock_writer = self._sock_writer
+    async def close(self) -> None:
         reader_coroutine = self._reader_coroutine
+        self._reader_coroutine = None
+        if reader_coroutine:
+            _ = reader_coroutine.cancel()
+            await reader_coroutine
+
+        sock_writer = self._sock_writer
         self._sock_writer = None
         if not sock_writer:
             return
 
-        if not force:
-            try:
-                clear_mon = self.send_rpc(NetDAQCommand.CLEAR_MONITOR_CHANNEL, writer=sock_writer)
-                stop = self.send_rpc(NetDAQCommand.STOP, writer=sock_writer)
-                close = self.send_rpc(NetDAQCommand.CLOSE, writer=sock_writer)
-                _ = await gather(clear_mon, stop, close)
-            except:
-                pass
+        try:
+            _ = await self.send_rpc(NetDAQCommand.CLEAR_MONITOR_CHANNEL, writer=sock_writer, wait_response=False)
+        except:
+            pass
+        try:
+            _ = await self.send_rpc(NetDAQCommand.STOP, writer=sock_writer, wait_response=False)
+        except:
+            pass
+        try:
+            _ = await self.send_rpc(NetDAQCommand.CLOSE, writer=sock_writer, wait_response=False)
+        except:
+            pass
 
         sock_writer.close()
         await sock_writer.wait_closed()
-        if (not force) and reader_coroutine:
-            await reader_coroutine
 
     async def _reader_coroutine_func(self, sock_reader: StreamReader) -> None:
         try:
@@ -266,9 +272,12 @@ class NetDAQ:
                     response_future.set_exception(ResponseErrorCodeException(code=response_code, payload=payload))
                 else:
                     response_future.set_result(payload)
+        except CancelledError:
+            return
         except Exception:
             print_exc()
-            await self.close(force=True)
+            self._reader_coroutine = None
+            await self.close()
 
     async def connect(self) -> None:
         await self.close()
@@ -320,7 +329,7 @@ class NetDAQ:
             return b'\x00\x00\x00\x00'
         return self._make_int(1 << bit)
 
-    async def send_rpc(self, command: NetDAQCommand, payload: bytes = b'', writer: StreamWriter | None = None) -> bytes:
+    async def send_rpc(self, command: NetDAQCommand, payload: bytes = b'', writer: StreamWriter | None = None, wait_response: bool = True) -> bytes:
         if not writer:
             writer = self._sock_writer
         if not writer:
@@ -334,13 +343,16 @@ class NetDAQ:
                     self._make_int(command.value) + \
                     self._make_int(len(payload) + self._HEADER_LEN) + \
                     payload
-        
+
         response_future: Future[bytes] = get_event_loop().create_future()
-        self._response_futures[sequence_id] = response_future
+        if wait_response:
+            self._response_futures[sequence_id] = response_future
 
         writer.write(packet)
         await writer.drain()
 
+        if not wait_response:
+            return b''
         return await response_future
 
     async def ping(self) -> None:
@@ -463,7 +475,6 @@ class NetDAQ:
             result.append(DAQReading(
                 time=self._parse_time(chunk_data[4:]),
                 dio=self._parse_short(chunk_data[12:]),
-                unk1=self._parse_short(chunk_data[14:]),
                 alarm1_bitmask=self._parse_int(chunk_data[16:]),
                 alarm2_bitmask=self._parse_int(chunk_data[20:]),
                 totalizer=self._parse_int(chunk_data[24:]),

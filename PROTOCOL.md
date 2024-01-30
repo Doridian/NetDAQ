@@ -97,7 +97,7 @@ Six enabled VDC channels, two readings
     - 0x00 (ignore), Day of month, 2-digit-Year, 0x02 (ignore)
     - 4-byte milliseconds, first two bytes 0x00 0xFF (should be ignored)
     - DIO status bitfield 2-byte
-    - 2-byte UNKNOWN (not null, changing)
+    - 2-byte UNKNOWN (not null, changing, likely garbage data)
     - Alarm1 bitmask 4-byte
     - Alarm2 bitmask 4-byte
     - Totalizer count 4-byte

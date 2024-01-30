@@ -24,7 +24,7 @@ async def main():
 
         await instrument.set_config(DAQConfiguration(
             triggers=[DAQConfigTrigger.INTERVAL],
-            interval_time=0.25,
+            interval_time=0.5,
             phy_channels=[
                 DAQChannelConfiguration(
                     mtype=DAQMeasuremenType.VDC,
