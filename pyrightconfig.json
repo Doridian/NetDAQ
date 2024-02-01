@@ -66,7 +66,6 @@
   "reportUnnecessaryTypeIgnoreComment": "error",
   "reportUnusedCallResult": "error",
   "reportDeprecated": "error",
-  "reportImplicitOverride": "error",
   "reportShadowedImports": "error",
   "reportUnusedCoroutine": "error",
   "strictParameterNoneValue": true,

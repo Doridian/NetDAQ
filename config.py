@@ -1,8 +1,10 @@
 from dataclasses import dataclass, field
 from enums import DAQConfigAlarm, DAQAnalogMeasuremenType, DAQComputedMeasurementType, DAQRange, DAQConfigSpeed, DAQConfigTrigger, DAQConfigBits
+from abc import ABC, abstractmethod
+from encoding import make_int, make_float, make_optional_indexed_bit, NULL_INTEGER
 
 @dataclass(frozen=True, kw_only=True)
-class DAQChannelConfiguration:
+class DAQChannelConfiguration(ABC):
     use_channel_as_alarm_trigger: bool = True
     alarm1_mode: DAQConfigAlarm = DAQConfigAlarm.OFF
     alarm2_mode: DAQConfigAlarm = DAQConfigAlarm.OFF
@@ -19,6 +21,19 @@ class DAQChannelConfiguration:
         result |= self.alarm1_mode.value << 1
         result |= self.alarm2_mode.value << 3
         return result
+    
+    def write_common_trailer(self) -> bytes:
+        return make_int(self.alarm_bits()) + \
+                make_float(self.alarm1_level) + \
+                make_float(self.alarm2_level) + \
+                make_optional_indexed_bit(self.alarm1_digital) + \
+                make_optional_indexed_bit(self.alarm2_digital) + \
+                make_float(self.mxab_multuplier) + \
+                make_float(self.mxab_offset)
+
+    @abstractmethod
+    def write(self, equation_offset: int) -> tuple[bytes, bytes]:
+        pass
 
 @dataclass(frozen=True, kw_only=True)
 class DAQAnalogChannelConfiguration(DAQChannelConfiguration):
@@ -44,12 +59,38 @@ class DAQAnalogChannelConfiguration(DAQChannelConfiguration):
 
         return 0x0000
 
+    def write(self, equation_offset: int) -> tuple[bytes, bytes]:
+        payload = make_int(self.mtype.value) + \
+                    make_int(self.range.value) + \
+                    make_float(self.aux1) + \
+                    make_float(self.aux2) + \
+                    make_int(self.extra_bits()) + \
+                    self.write_common_trailer()
+        return payload, b''
+
 @dataclass(frozen=True, kw_only=True)
 class DAQComputedChannelConfiguration(DAQChannelConfiguration):
     mtype: DAQComputedMeasurementType = DAQComputedMeasurementType.OFF
     channel_a: int = 0
     aux1: int = 0 # Channel bitmask / Channel B / Equation offset
     equation: bytes = b''
+
+    def write(self, equation_offset: int) -> tuple[bytes, bytes]:
+        payload = make_int(self.mtype.value) + \
+                    NULL_INTEGER + \
+                    make_int(self.channel_a) + \
+                    NULL_INTEGER
+        
+        if self.mtype == DAQComputedMeasurementType.Equation:
+            if len(self.equation) == 0:
+                raise ValueError('Equation requiredfor equation type channel')
+
+            payload += make_int(equation_offset)
+        else:
+            payload += make_int(self.aux1)
+
+        payload += self.write_common_trailer()
+        return payload, self.equation
 
 @dataclass(frozen=True, kw_only=True)
 class DAQConfiguration:
