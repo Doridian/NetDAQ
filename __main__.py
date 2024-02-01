@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 
 from netdaq import NetDAQ
-from config import DAQConfiguration, DAQAnalogChannel, DAQConfigTrigger
-from enums import DAQAnalogMeasuremenType, DAQRange, DAQConfigAlarm
+from config import DAQConfiguration, DAQConfigTrigger
+from enums import DAQVDCRange, DAQConfigAlarm
+from analog_channels import DAQAnalogVDCChannel
 from sys import argv
 from asyncio import run, sleep
 
@@ -28,9 +29,8 @@ async def main():
             triggers=[DAQConfigTrigger.INTERVAL],
             interval_time=0.5,
             analog_channels=[
-                DAQAnalogChannel(
-                    mtype=DAQAnalogMeasuremenType.VDC,
-                    range=DAQRange.VDC_3V,
+                DAQAnalogVDCChannel(
+                    range=DAQVDCRange.VDC_3V,
                     alarm1_mode=DAQConfigAlarm.LOW,
                     alarm1_level=2.0,
                     alarm1_digital=5,

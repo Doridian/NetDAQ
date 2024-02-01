@@ -47,7 +47,6 @@ class DAQConfigAlarm(Enum):
 class DAQAnalogMeasuremenType(Enum):
     OFF          = 0x00000000
     Ohms         = 0x00000001
-    Ohms_4Wire   = 0x00000001
     VDC          = 0x00000002
     VAC          = 0x00000004
     Frequency    = 0x00000008
@@ -62,9 +61,7 @@ class DAQComputedMeasurementType(Enum):
     AminusAvg    = 0x00008003
     Equation     = 0x00008004
 
-class DAQRange(Enum):
-    NONE = 0x0000
-
+class DAQVDCRange(Enum):
     VDC_90mV   = 0x2001
     VDC_300mV  = 0x2102
     VDC_3V     = 0x2308
@@ -72,11 +69,13 @@ class DAQRange(Enum):
     VDC_AUTO   = 0x2520
     VDC_50V    = 0x2640
 
+class DAQVACRange(Enum):
     VAC_300mV  = 0x3001
     VAC_3V     = 0x3102
     VAC_30V    = 0x3204
     VAC_AUTO   = 0x3308
 
+class DAQOhmsRange(Enum):
     Ohms_300   = 0x1001
     Ohms_3k    = 0x1102
     Ohms_30k   = 0x1204
@@ -84,6 +83,11 @@ class DAQRange(Enum):
     Ohms_3M    = 0x1410
     Ohms_AUTO  = 0x1520
 
+class DAQCurrentRange(Enum):
+    Current_20mA  = 0x2102
+    Current_100mA = 0x2520
+
+class DAQThermocoupleRange(Enum):
     TC_J = 0x6001
     TC_K = 0x6101
     TC_E = 0x6201
@@ -94,10 +98,6 @@ class DAQRange(Enum):
     TC_C = 0x6701
     TC_N = 0x6801
 
+class DAQRTDRange(Enum):
     RTD_FIXED_385  = 0x5020
     RTD_CUSTOM_385 = 0x5021
-
-    Frequency_AUTO = 0x0000
-
-    Current_20mA  = 0x2102
-    Current_100mA = 0x2520

@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from enums import DAQConfigAlarm, DAQAnalogMeasuremenType, DAQComputedMeasurementType, DAQRange, DAQConfigSpeed, DAQConfigTrigger, DAQConfigBits
+from enums import DAQConfigAlarm, DAQConfigSpeed, DAQConfigTrigger, DAQConfigBits
 from encoding import make_int, make_float, make_optional_indexed_bit, NULL_INTEGER
 
 @dataclass(frozen=True, kw_only=True)
@@ -36,93 +36,24 @@ class DAQChannel:
     def write(self) -> bytes:
         raise NotImplementedError('write or write_with_equation method must be implemented in subclass')
 
+
+@dataclass(frozen=True, kw_only=True)
+class DAQDisabledChannel(DAQChannel):
+    def write(self) -> bytes:
+            return NULL_INTEGER + \
+                    NULL_INTEGER + \
+                    NULL_INTEGER + \
+                    NULL_INTEGER + \
+                    NULL_INTEGER + \
+                    self.write_common_trailer()
+
 @dataclass(frozen=True, kw_only=True)
 class DAQAnalogChannel(DAQChannel):
-    mtype: DAQAnalogMeasuremenType = DAQAnalogMeasuremenType.OFF
-    aux1: float = 0.0 # RTD ALpha
-    aux2: float = 0.0 # RTD R0 / Shunt resistance
-    open_thermocouple_detect: bool = True
-    range: DAQRange = DAQRange.NONE
-
-    def extra_bits(self) -> int:
-        if self.mtype == DAQAnalogMeasuremenType.Ohms:
-            return 0x9000
-        if self.mtype == DAQAnalogMeasuremenType.Ohms_4Wire or self.mtype == DAQAnalogMeasuremenType.RTD:
-            return 0x9001
-
-        if self.mtype == DAQAnalogMeasuremenType.Thermocouple:
-            return 0x0001 if self.open_thermocouple_detect else 0x0000
-
-        if self.mtype == DAQAnalogMeasuremenType.Current:
-            if self.range == DAQRange.Current_20mA:
-                return 0x7000
-            return 0x7001
-
-        return 0x0000
-
-    def write(self) -> bytes:
-        return make_int(self.mtype.value) + \
-                    make_int(self.range.value) + \
-                    make_float(self.aux1) + \
-                    make_float(self.aux2) + \
-                    make_int(self.extra_bits()) + \
-                    self.write_common_trailer()
+    pass
 
 @dataclass(frozen=True, kw_only=True)
 class DAQComputedChannel(DAQChannel):
     pass
-
-@dataclass(frozen=True, kw_only=True)
-class DAQComputedAverageChannel(DAQComputedChannel):
-    channel_bitmask: int
-
-    def write(self) -> bytes:
-        return make_int(DAQComputedMeasurementType.Average.value) + \
-                    NULL_INTEGER + \
-                    NULL_INTEGER + \
-                    NULL_INTEGER + \
-                    make_int(self.channel_bitmask) + \
-                    self.write_common_trailer()
-
-@dataclass(frozen=True, kw_only=True)
-class DAQComputedAminusBChannel(DAQComputedChannel):
-    channel_a: int
-    channel_b: int
-
-    def write(self) -> bytes:
-        return make_int(DAQComputedMeasurementType.AminusB.value) + \
-                    NULL_INTEGER + \
-                    make_int(self.channel_a) + \
-                    NULL_INTEGER + \
-                    make_int(self.channel_b) + \
-                    self.write_common_trailer()
-
-@dataclass(frozen=True, kw_only=True)
-class DAQComputedAminusAvgChannel(DAQComputedChannel):
-    channel_a: int
-    channel_bitmask: int
-
-    def write(self) -> bytes:
-        return make_int(DAQComputedMeasurementType.AminusB.value) + \
-                    NULL_INTEGER + \
-                    make_int(self.channel_a) + \
-                    NULL_INTEGER + \
-                    make_int(self.channel_bitmask) + \
-                    self.write_common_trailer()
-
-@dataclass(frozen=True, kw_only=True)
-class DAQComputedEquationChannel(DAQComputedChannel):
-    equation: bytes = b''
-
-    def write_with_aux(self, aux_offset: int) -> tuple[bytes, bytes]:
-        payload = make_int(DAQComputedMeasurementType.Equation.value) + \
-                    NULL_INTEGER + \
-                    NULL_INTEGER + \
-                    NULL_INTEGER + \
-                    make_int(aux_offset) + \
-                    self.write_common_trailer()
-
-        return payload, self.equation
 
 @dataclass(frozen=True, kw_only=True)
 class DAQConfiguration:

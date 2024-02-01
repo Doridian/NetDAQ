@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from asyncio import sleep, open_connection, StreamReader, StreamWriter, get_event_loop, Future, Task, CancelledError
 from traceback import print_exc
 from enums import DAQCommand
-from config import DAQAnalogChannel, DAQComputedChannel, DAQConfiguration
+from config import DAQDisabledChannel, DAQConfiguration
 from encoding import make_int, parse_float, parse_int, parse_short, make_time, parse_time, INT_LEN
 
 class ResponseErrorCodeException(Exception):
@@ -205,13 +205,13 @@ class NetDAQ:
 
         analog_channels = config.analog_channels
         if len(analog_channels) < self._CHANNEL_COUNT_ANALOG:
-            analog_channels += [DAQAnalogChannel() for _ in range(self._CHANNEL_COUNT_ANALOG - len(analog_channels))]
+            analog_channels += [DAQDisabledChannel() for _ in range(self._CHANNEL_COUNT_ANALOG - len(analog_channels))]
         elif len(analog_channels) > self._CHANNEL_COUNT_ANALOG:
             raise ValueError('Too many analog channels')
 
         computed_channels = config.computed_channels
         if len(computed_channels) < self._CHANNEL_COUNT_COMPUTED:
-            computed_channels += [DAQComputedChannel() for _ in range(self._CHANNEL_COUNT_COMPUTED - len(computed_channels))]
+            computed_channels += [DAQDisabledChannel() for _ in range(self._CHANNEL_COUNT_COMPUTED - len(computed_channels))]
         elif len(computed_channels) > self._CHANNEL_COUNT_COMPUTED:
             raise ValueError('Too many computed channels')
 
