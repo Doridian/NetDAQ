@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 
-from netdaq import NetDAQ
-from config import DAQConfiguration, DAQConfigTrigger
-from enums import DAQVDCRange, DAQConfigAlarm
-from analog_channels import DAQAnalogVDCChannel
+from lib.netdaq import NetDAQ
+from lib.config.instrument import DAQConfiguration, DAQConfigTrigger
+from lib.config.enums import DAQVDCRange, DAQConfigAlarm
+from lib.config.channels.analog import DAQAnalogVDCChannel
 from sys import argv
 from asyncio import run, sleep
 

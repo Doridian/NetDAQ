@@ -2,9 +2,10 @@ from datetime import datetime
 from dataclasses import dataclass
 from asyncio import sleep, open_connection, StreamReader, StreamWriter, get_event_loop, Future, Task, CancelledError
 from traceback import print_exc
-from enums import DAQCommand
-from config import DAQDisabledChannel, DAQConfiguration
-from encoding import make_int, parse_float, parse_int, parse_short, make_time, parse_time, INT_LEN
+from .config.enums import DAQCommand
+from .config.instrument import DAQConfiguration
+from .config.channels.base import DAQDisabledChannel
+from .utils.encoding import make_int, parse_float, parse_int, parse_short, make_time, parse_time, INT_LEN
 
 class ResponseErrorCodeException(Exception):
     def __init__(self, code: int, payload: bytes) -> None:

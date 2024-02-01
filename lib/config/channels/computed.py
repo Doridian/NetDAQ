@@ -1,12 +1,14 @@
-from config import DAQComputedChannel
-from enums import DAQComputedMeasurementType
-from encoding import make_int, NULL_INTEGER
+from .base import DAQComputedChannel
+from ..enums import DAQComputedMeasurementType
+from ...utils.encoding import make_int, NULL_INTEGER
 from dataclasses import dataclass
+from typing import override
 
 @dataclass(frozen=True, kw_only=True)
 class DAQComputedAverageChannel(DAQComputedChannel):
     channel_bitmask: int
 
+    @override
     def write(self) -> bytes:
         return make_int(DAQComputedMeasurementType.Average.value) + \
                     NULL_INTEGER + \
@@ -20,6 +22,7 @@ class DAQComputedAminusBChannel(DAQComputedChannel):
     channel_a: int
     channel_b: int
 
+    @override
     def write(self) -> bytes:
         return make_int(DAQComputedMeasurementType.AminusB.value) + \
                     NULL_INTEGER + \
@@ -33,6 +36,7 @@ class DAQComputedAminusAvgChannel(DAQComputedChannel):
     channel_a: int
     channel_bitmask: int
 
+    @override
     def write(self) -> bytes:
         return make_int(DAQComputedMeasurementType.AminusB.value) + \
                     NULL_INTEGER + \
@@ -45,6 +49,7 @@ class DAQComputedAminusAvgChannel(DAQComputedChannel):
 class DAQComputedEquationChannel(DAQComputedChannel):
     equation: bytes = b''
 
+    @override
     def write_with_aux(self, aux_offset: int) -> tuple[bytes, bytes]:
         payload = make_int(DAQComputedMeasurementType.Equation.value) + \
                     NULL_INTEGER + \

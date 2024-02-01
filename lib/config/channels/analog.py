@@ -1,13 +1,15 @@
 from dataclasses import dataclass
-from enums import DAQAnalogMeasuremenType, DAQOhmsRange, DAQVDCRange, DAQVACRange, DAQCurrentRange, DAQThermocoupleRange, DAQRTDRange
-from encoding import make_int, make_float, NULL_INTEGER
-from config import DAQAnalogChannel
+from ..enums import DAQAnalogMeasuremenType, DAQOhmsRange, DAQVDCRange, DAQVACRange, DAQCurrentRange, DAQThermocoupleRange, DAQRTDRange
+from ...utils.encoding import make_int, make_float, NULL_INTEGER
+from .base import DAQAnalogChannel
+from typing import override
 
 @dataclass(frozen=True, kw_only=True)
 class DAQAnalogOhmsChannel(DAQAnalogChannel):
     four_wire: bool = False
     range: DAQOhmsRange
 
+    @override
     def write(self) -> bytes:
         extra_bits = 0x9000
         if self.four_wire:
@@ -24,6 +26,7 @@ class DAQAnalogOhmsChannel(DAQAnalogChannel):
 class DAQAnalogVDCChannel(DAQAnalogChannel):
     range: DAQVDCRange
 
+    @override
     def write(self) -> bytes:
         return make_int(DAQAnalogMeasuremenType.VDC.value) + \
                     make_int(self.range.value) + \
@@ -36,6 +39,7 @@ class DAQAnalogVDCChannel(DAQAnalogChannel):
 class DAQAnalogVACChannel(DAQAnalogChannel):
     range: DAQVACRange
 
+    @override
     def write(self) -> bytes:
         return make_int(DAQAnalogMeasuremenType.VAC.value) + \
                     make_int(self.range.value) + \
@@ -46,6 +50,7 @@ class DAQAnalogVACChannel(DAQAnalogChannel):
 
 @dataclass(frozen=True, kw_only=True)
 class DAQAnalogFrequencyChannel(DAQAnalogChannel):
+    @override
     def write(self) -> bytes:
         return make_int(DAQAnalogMeasuremenType.Frequency.value) + \
                     NULL_INTEGER + \
@@ -60,6 +65,7 @@ class DAQAnalogRTDChannel(DAQAnalogChannel):
     alpha: float = 0.0
     r0: float = 0.0
 
+    @override
     def write(self) -> bytes:
         return make_int(DAQAnalogMeasuremenType.RTD.value) + \
                     make_int(self.range.value) + \
@@ -73,6 +79,7 @@ class DAQAnalogThermocoupleChannel(DAQAnalogChannel):
     range: DAQThermocoupleRange
     open_thermocouple_detect: bool = True
 
+    @override
     def write(self) -> bytes:
         extra_bits = 0x0000
         if self.open_thermocouple_detect:
@@ -89,6 +96,7 @@ class DAQAnalogThermocoupleChannel(DAQAnalogChannel):
 class DAQAnalogCurrentChannel(DAQAnalogChannel):
     range: DAQCurrentRange
 
+    @override
     def write(self) -> bytes:
         extra_bits = 0x7000
         if self.range == DAQCurrentRange.Current_100mA:

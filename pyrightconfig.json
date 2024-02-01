@@ -1,5 +1,5 @@
 {
-  "pythonVersion": "3.11",
+  "pythonVersion": "3.12",
   "pythonPlatform": "Linux",
   "typeCheckingMode": "strict",
   "reportMissingImports": "error",
@@ -66,6 +66,7 @@
   "reportUnnecessaryTypeIgnoreComment": "error",
   "reportUnusedCallResult": "error",
   "reportDeprecated": "error",
+  "reportImplicitOverride": "error",
   "reportShadowedImports": "error",
   "reportUnusedCoroutine": "error",
   "strictParameterNoneValue": true,
