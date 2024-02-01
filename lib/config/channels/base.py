@@ -35,7 +35,7 @@ class DAQChannel:
         return self.write(), b''
 
     def write(self) -> bytes:
-        raise NotImplementedError('write or write_with_equation method must be implemented in subclass')
+        raise NotImplementedError('write or write_with_aux method must be implemented in subclass')
 
 
 @dataclass(frozen=True, kw_only=True)
