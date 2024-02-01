@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from enums import DAQConfigAlarm, DAQAnalogMeasuremenType, DAQComputedMeasuremenType, DAQRange, DAQConfigSpeed, DAQConfigTrigger, DAQConfigBits
+from enums import DAQConfigAlarm, DAQAnalogMeasuremenType, DAQComputedMeasurementType, DAQRange, DAQConfigSpeed, DAQConfigTrigger, DAQConfigBits
 
 @dataclass(frozen=True, kw_only=True)
 class DAQChannelConfiguration:
@@ -46,9 +46,10 @@ class DAQAnalogChannelConfiguration(DAQChannelConfiguration):
 
 @dataclass(frozen=True, kw_only=True)
 class DAQComputedChannelConfiguration(DAQChannelConfiguration):
-    mtype: DAQComputedMeasuremenType = DAQComputedMeasuremenType.OFF
+    mtype: DAQComputedMeasurementType = DAQComputedMeasurementType.OFF
     channel_a: int = 0
     aux1: int = 0 # Channel bitmask / Channel B / Equation offset
+    equation: bytes = b''
 
 @dataclass(frozen=True, kw_only=True)
 class DAQConfiguration:

@@ -55,7 +55,7 @@ class DAQAnalogMeasuremenType(Enum):
     Thermocouple = 0x00000020
     Current      = 0x00010002
 
-class DAQComputedMeasuremenType(Enum):
+class DAQComputedMeasurementType(Enum):
     OFF          = 0x00000000
     Average      = 0x00008001
     AminusB      = 0x00008002

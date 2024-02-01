@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from struct import pack, unpack
 from asyncio import sleep, open_connection, StreamReader, StreamWriter, get_event_loop, Future, Task, CancelledError
 from traceback import print_exc
-from enums import DAQCommand
+from enums import DAQCommand, DAQComputedMeasurementType
 from config import DAQAnalogChannelConfiguration, DAQComputedChannelConfiguration, DAQConfiguration
 
 class ResponseErrorCodeException(Exception):
@@ -34,6 +34,8 @@ class DAQReading:
 class DAQReadingResult:
     readings: list[DAQReading]
     instrument_queue: int
+
+CHANNEL_PAYLOAD_LENGTH = 2492
 
 class NetDAQ:
     _FIXED_HEADER = bytes([0x46, 0x45, 0x4C, 0x58])
@@ -267,13 +269,25 @@ class NetDAQ:
         if len(computed_channels) < self._CHANNEL_COUNT_COMPUTED:
             computed_channels += [DAQComputedChannelConfiguration() for _ in range(self._CHANNEL_COUNT_COMPUTED - len(computed_channels))]
 
+        equation_offset = 0
+        equation_buffer = b''
         for chan in computed_channels:
             payload += self._make_int(chan.mtype.value) + \
                         self._NULL_INTEGER + \
                         self._make_int(chan.channel_a) + \
-                        self._NULL_INTEGER + \
-                        self._make_int(chan.aux1) + \
-                        self._make_int(chan.alarm_bits()) + \
+                        self._NULL_INTEGER
+            
+            if chan.mtype == DAQComputedMeasurementType.Equation:
+                if len(chan.equation) == 0:
+                    raise ValueError('Equation requiredfor equation type channel')
+
+                payload += self._make_int(equation_offset)
+                equation_offset += len(chan.equation)
+                equation_buffer += chan.equation
+            else:
+                payload += self._make_int(chan.aux1)
+
+            payload += self._make_int(chan.alarm_bits()) + \
                         self._make_float(chan.alarm1_level) + \
                         self._make_float(chan.alarm2_level) + \
                         self._make_optional_indexed_bit(chan.alarm1_digital) + \
@@ -281,7 +295,14 @@ class NetDAQ:
                         self._make_float(chan.mxab_multuplier) + \
                         self._make_float(chan.mxab_offset)
 
-        payload = payload + (b'\x00' * (2492 - len(payload)))
+        payload += equation_buffer
+
+        length_left = CHANNEL_PAYLOAD_LENGTH - len(payload)
+        if length_left < 0:
+            raise ValueError('Payload too large (too many equations?)')
+        elif length_left > 0:
+            payload += (b'\x00' * length_left)
+
         _ = await self.send_rpc(DAQCommand.SET_CONFIG, payload)
         await self.wait_for_idle()
 
