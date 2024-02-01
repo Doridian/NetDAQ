@@ -26,9 +26,8 @@ def parse_time(data: bytes) -> datetime:
     # Handle cases where a measurement came in December 2099
     # but the current date is January 2100 etc...
     decades_year = now.year
-    if measurement_month == 12:
-        if now.month == 1:
-            decades_year -= 1
+    if measurement_month == 12 and now.month == 1:
+        decades_year -= 1
     decades_year -= decades_year % 100
 
     return datetime(
