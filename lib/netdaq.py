@@ -5,7 +5,7 @@ from traceback import print_exc
 from .config.enums import DAQCommand
 from .config.instrument import DAQConfiguration
 from .config.channels.base import DAQDisabledChannel
-from .utils.encoding import make_int, parse_float, parse_int, parse_short, make_time, parse_time, INT_LEN, NULL_INTEGER
+from .utils.encoding import make_int, parse_float, parse_int, parse_short, make_time, parse_time, INT_LEN, NULL_INT
 
 class ResponseErrorCodeException(Exception):
     def __init__(self, code: int, payload: bytes) -> None:
@@ -190,17 +190,17 @@ class NetDAQ:
 
     async def set_config(self, config: DAQConfiguration) -> None:
         payload = make_int(config.bits()) + \
-                    NULL_INTEGER + \
-                    NULL_INTEGER + \
+                    NULL_INT + \
+                    NULL_INT + \
                     make_int(int(config.interval_time)) + \
                     make_int(int(config.interval_time * 1000) % 1000) + \
-                    NULL_INTEGER + \
-                    NULL_INTEGER + \
+                    NULL_INT + \
+                    NULL_INT + \
                     make_int(int(config.alarm_time)) + \
                     make_int(int(config.alarm_time * 1000) % 1000) + \
-                    NULL_INTEGER + \
-                    NULL_INTEGER + \
-                    NULL_INTEGER + \
+                    NULL_INT + \
+                    NULL_INT + \
+                    NULL_INT + \
                     b'\x00\x00\x00\x64'
 
         analog_channels = config.analog_channels

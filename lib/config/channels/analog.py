@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from ..enums import DAQAnalogMeasuremenType, DAQOhmsRange, DAQVDCRange, DAQVACRange, DAQCurrentRange, DAQThermocoupleRange, DAQRTDRange
-from ...utils.encoding import make_int, make_float, NULL_INTEGER
+from ...utils.encoding import make_int, make_float, NULL_INT
 from .base import DAQAnalogChannel
 from typing import override
 
@@ -17,8 +17,8 @@ class DAQAnalogOhmsChannel(DAQAnalogChannel):
 
         return make_int(DAQAnalogMeasuremenType.Ohms.value) + \
                     make_int(self.range.value) + \
-                    NULL_INTEGER + \
-                    NULL_INTEGER + \
+                    NULL_INT + \
+                    NULL_INT + \
                     make_int(extra_bits) + \
                     self.write_common_trailer()
 
@@ -30,9 +30,9 @@ class DAQAnalogVDCChannel(DAQAnalogChannel):
     def write(self) -> bytes:
         return make_int(DAQAnalogMeasuremenType.VDC.value) + \
                     make_int(self.range.value) + \
-                    NULL_INTEGER + \
-                    NULL_INTEGER + \
-                    NULL_INTEGER + \
+                    NULL_INT + \
+                    NULL_INT + \
+                    NULL_INT + \
                     self.write_common_trailer()
     
 @dataclass(frozen=True, kw_only=True)
@@ -43,9 +43,9 @@ class DAQAnalogVACChannel(DAQAnalogChannel):
     def write(self) -> bytes:
         return make_int(DAQAnalogMeasuremenType.VAC.value) + \
                     make_int(self.range.value) + \
-                    NULL_INTEGER + \
-                    NULL_INTEGER + \
-                    NULL_INTEGER + \
+                    NULL_INT + \
+                    NULL_INT + \
+                    NULL_INT + \
                     self.write_common_trailer()
 
 @dataclass(frozen=True, kw_only=True)
@@ -53,10 +53,10 @@ class DAQAnalogFrequencyChannel(DAQAnalogChannel):
     @override
     def write(self) -> bytes:
         return make_int(DAQAnalogMeasuremenType.Frequency.value) + \
-                    NULL_INTEGER + \
-                    NULL_INTEGER + \
-                    NULL_INTEGER + \
-                    NULL_INTEGER + \
+                    NULL_INT + \
+                    NULL_INT + \
+                    NULL_INT + \
+                    NULL_INT + \
                     self.write_common_trailer()
 
 @dataclass(frozen=True, kw_only=True)
@@ -87,8 +87,8 @@ class DAQAnalogThermocoupleChannel(DAQAnalogChannel):
 
         return make_int(DAQAnalogMeasuremenType.Thermocouple.value) + \
                     make_int(self.range.value) + \
-                    NULL_INTEGER + \
-                    NULL_INTEGER + \
+                    NULL_INT + \
+                    NULL_INT + \
                     make_int(extra_bits) + \
                     self.write_common_trailer()
     
@@ -104,7 +104,7 @@ class DAQAnalogCurrentChannel(DAQAnalogChannel):
 
         return make_int(DAQAnalogMeasuremenType.Current.value) + \
                     make_int(self.range.value) + \
-                    NULL_INTEGER + \
-                    NULL_INTEGER + \
+                    NULL_INT + \
+                    NULL_INT + \
                     make_int(extra_bits) + \
                     self.write_common_trailer()

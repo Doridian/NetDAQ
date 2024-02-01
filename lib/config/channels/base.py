@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from ..enums import DAQConfigAlarm
-from ...utils.encoding import make_int, make_float, make_optional_indexed_bit, NULL_INTEGER
+from ...utils.encoding import make_int, make_float, make_optional_indexed_bit, NULL_INT
 from typing import override
 
 @dataclass(frozen=True, kw_only=True)
@@ -42,11 +42,11 @@ class DAQChannel:
 class DAQDisabledChannel(DAQChannel):
     @override
     def write(self) -> bytes:
-            return NULL_INTEGER + \
-                    NULL_INTEGER + \
-                    NULL_INTEGER + \
-                    NULL_INTEGER + \
-                    NULL_INTEGER + \
+            return NULL_INT + \
+                    NULL_INT + \
+                    NULL_INT + \
+                    NULL_INT + \
+                    NULL_INT + \
                     self.write_common_trailer()
 
 @dataclass(frozen=True, kw_only=True)

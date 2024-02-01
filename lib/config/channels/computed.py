@@ -1,6 +1,6 @@
 from .base import DAQComputedChannel
 from ..enums import DAQComputedMeasurementType
-from ...utils.encoding import make_int, NULL_INTEGER
+from ...utils.encoding import make_int, NULL_INT
 from dataclasses import dataclass
 from typing import override
 
@@ -11,9 +11,9 @@ class DAQComputedAverageChannel(DAQComputedChannel):
     @override
     def write(self) -> bytes:
         return make_int(DAQComputedMeasurementType.Average.value) + \
-                    NULL_INTEGER + \
-                    NULL_INTEGER + \
-                    NULL_INTEGER + \
+                    NULL_INT + \
+                    NULL_INT + \
+                    NULL_INT + \
                     make_int(self.channel_bitmask) + \
                     self.write_common_trailer()
 
@@ -25,9 +25,9 @@ class DAQComputedAminusBChannel(DAQComputedChannel):
     @override
     def write(self) -> bytes:
         return make_int(DAQComputedMeasurementType.AminusB.value) + \
-                    NULL_INTEGER + \
+                    NULL_INT + \
                     make_int(self.channel_a) + \
-                    NULL_INTEGER + \
+                    NULL_INT + \
                     make_int(self.channel_b) + \
                     self.write_common_trailer()
 
@@ -39,9 +39,9 @@ class DAQComputedAminusAvgChannel(DAQComputedChannel):
     @override
     def write(self) -> bytes:
         return make_int(DAQComputedMeasurementType.AminusB.value) + \
-                    NULL_INTEGER + \
+                    NULL_INT + \
                     make_int(self.channel_a) + \
-                    NULL_INTEGER + \
+                    NULL_INT + \
                     make_int(self.channel_bitmask) + \
                     self.write_common_trailer()
 
@@ -52,9 +52,9 @@ class DAQComputedEquationChannel(DAQComputedChannel):
     @override
     def write_with_aux(self, aux_offset: int) -> tuple[bytes, bytes]:
         payload = make_int(DAQComputedMeasurementType.Equation.value) + \
-                    NULL_INTEGER + \
-                    NULL_INTEGER + \
-                    NULL_INTEGER + \
+                    NULL_INT + \
+                    NULL_INT + \
+                    NULL_INT + \
                     make_int(aux_offset) + \
                     self.write_common_trailer()
 

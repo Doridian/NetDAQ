@@ -2,7 +2,7 @@ from struct import pack, unpack
 from datetime import datetime
 
 INT_LEN = 4
-NULL_INTEGER = b'\x00' * INT_LEN
+NULL_INT = b'\x00' * INT_LEN
 
 def parse_int(data: bytes) -> int:
         return int.from_bytes(data[:INT_LEN], 'big')
@@ -44,5 +44,5 @@ def make_time(time: datetime) -> bytes:
 
 def make_optional_indexed_bit(bit: int | None) -> bytes:
     if bit is None:
-        return NULL_INTEGER
+        return NULL_INT
     return make_int(1 << bit)
