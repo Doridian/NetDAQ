@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from encoding import make_int, make_float, make_optional_indexed_bit, NULL_INTEGER
 
 @dataclass(frozen=True, kw_only=True)
-class DAQChannelConfiguration(ABC):
+class DAQChannel(ABC):
     use_channel_as_alarm_trigger: bool = True
     alarm1_mode: DAQConfigAlarm = DAQConfigAlarm.OFF
     alarm2_mode: DAQConfigAlarm = DAQConfigAlarm.OFF
@@ -36,7 +36,7 @@ class DAQChannelConfiguration(ABC):
         pass
 
 @dataclass(frozen=True, kw_only=True)
-class DAQAnalogChannelConfiguration(DAQChannelConfiguration):
+class DAQAnalogChannel(DAQChannel):
     mtype: DAQAnalogMeasuremenType = DAQAnalogMeasuremenType.OFF
     aux1: float = 0.0 # RTD ALpha
     aux2: float = 0.0 # RTD R0 / Shunt resistance
@@ -69,7 +69,7 @@ class DAQAnalogChannelConfiguration(DAQChannelConfiguration):
         return payload, b''
 
 @dataclass(frozen=True, kw_only=True)
-class DAQComputedChannelConfiguration(DAQChannelConfiguration):
+class DAQComputedChannel(DAQChannel):
     mtype: DAQComputedMeasurementType = DAQComputedMeasurementType.OFF
     channel_a: int = 0
     aux1: int = 0 # Channel bitmask / Channel B / Equation offset
@@ -103,8 +103,8 @@ class DAQConfiguration:
 
     interval_time: float = 1.0
     alarm_time: float = 1.0
-    analog_channels: list[DAQAnalogChannelConfiguration] = field(default_factory=lambda: [])
-    computed_channels: list[DAQComputedChannelConfiguration] = field(default_factory=lambda: [])
+    analog_channels: list[DAQAnalogChannel] = field(default_factory=lambda: [])
+    computed_channels: list[DAQComputedChannel] = field(default_factory=lambda: [])
 
     def bits(self) -> int:
         result = self.speed.value
