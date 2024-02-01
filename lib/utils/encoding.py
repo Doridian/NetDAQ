@@ -21,12 +21,12 @@ def make_float(value: float) -> bytes:
 
 def parse_time(data: bytes) -> datetime:
     now = datetime.now()
-    month = data[3]
+    measurement_month = data[3]
 
     # Handle cases where a measurement came in December 2099
     # but the current date is January 2100 etc...
     decades_year = now.year
-    if month == 12:
+    if measurement_month == 12:
         if now.month == 1:
             decades_year -= 1
     decades_year -= decades_year % 100
@@ -35,7 +35,7 @@ def parse_time(data: bytes) -> datetime:
         hour=data[0],
         minute=data[1],
         second=data[2],
-        month=month,
+        month=measurement_month,
         day=data[5],
         year=decades_year + data[6],
         microsecond=(parse_int(data[8:]) & 0xFFFF) * 1000,
