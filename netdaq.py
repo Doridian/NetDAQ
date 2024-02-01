@@ -1,194 +1,16 @@
 from datetime import datetime
-from enum import Enum
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from struct import pack, unpack
 from asyncio import sleep, open_connection, StreamReader, StreamWriter, get_event_loop, Future, Task, CancelledError
 from traceback import print_exc
+from enums import DAQCommand
+from config import DAQAnalogChannelConfiguration, DAQComputedChannelConfiguration, DAQConfiguration
 
 class ResponseErrorCodeException(Exception):
     def __init__(self, code: int, payload: bytes) -> None:
         super().__init__(f'Response error: {code:08x}')
         self.code = code
         self.payload = payload
-
-class NetDAQCommand(Enum):
-    PING                  = 0x00000000
-    CLOSE                 = 0x00000001
-    STATUS_QUERY          = 0x00000002
-    GET_READINGS          = 0x00000064
-    START                 = 0x00000067
-    STOP                  = 0x00000068
-    SET_TIME              = 0x0000006A
-    QUERY_SPY             = 0x0000006F
-    RESET_TOTALIZER       = 0x00000071
-    GET_VERSION_INFO      = 0x00000072
-    SET_MONITOR_CHANNEL   = 0x00000075
-    CLEAR_MONITOR_CHANNEL = 0x00000076
-    GET_BASE_CHANNEL      = 0x00000077
-    DISABLE_SPY           = 0x0000007D
-    GET_LC_VERSION        = 0x0000007F
-    SET_CONFIG            = 0x00000081
-
-class DAQConfigBits(Enum):
-    MEDIUM_SPEED       = 0x0001
-    FAST_SPEED         = 0x0002
-    FAHRENHEIT         = 0x0004
-    TRIGGER_OUT        = 0x0008
-    DRIFT_CORRECTION   = 0x0010
-    TOTALIZER_DEBOUNCE = 0x0020
-    INTERVAL_TRIGGER   = 0x0040
-    ALARM_TRIGGER      = 0x0080
-    EXTERNAL_TRIGGER   = 0x0100
-
-class DAQConfigSpeed(Enum):
-    SLOW   = 0x0000
-    MEDIUM = 0x0001
-    FAST   = 0x0002
-
-class DAQConfigTrigger(Enum):
-    INTERVAL = 0x0040
-    ALARM    = 0x0080
-    EXTERNAL = 0x0100
-
-class DAQConfigAlarm(Enum):
-    OFF  = 0x00
-    HIGH = 0x01
-    LOW  = 0x02
-
-MEASUREMENT_COMPUTED_BIT = 0x00008000
-
-class DAQMeasuremenType(Enum):
-    OFF          = 0x00000000
-
-    # Analog channels
-    Ohms         = 0x00000001
-    Ohms_4Wire   = 0x00000001
-    VDC          = 0x00000002
-    VAC          = 0x00000004
-    Frequency    = 0x00000008
-    RTD          = 0x00000010
-    Thermocouple = 0x00000020
-    Current      = 0x00010002
-
-    # Computed channels
-    Average      = 0x00008001
-    AminusB      = 0x00008002
-    AminusAvg    = 0x00008003
-    Equation     = 0x00008004
-
-class DAQRange(Enum):
-    NONE = 0x0000
-
-    VDC_90mV   = 0x2001
-    VDC_300mV  = 0x2102
-    VDC_3V     = 0x2308
-    VDC_30V    = 0x2410
-    VDC_AUTO   = 0x2520
-    VDC_50V    = 0x2640
-
-    VAC_300mV  = 0x3001
-    VAC_3V     = 0x3102
-    VAC_30V    = 0x3204
-    VAC_AUTO   = 0x3308
-
-    Ohms_300   = 0x1001
-    Ohms_3k    = 0x1102
-    Ohms_30k   = 0x1204
-    Ohms_300k  = 0x1308
-    Ohms_3M    = 0x1410
-    Ohms_AUTO  = 0x1520
-
-    TC_J = 0x6001
-    TC_K = 0x6101
-    TC_E = 0x6201
-    TC_T = 0x6301
-    TC_R = 0x6401
-    TC_S = 0x6501
-    TC_B = 0x6601
-    TC_C = 0x6701
-    TC_N = 0x6801
-
-    RTD_FIXED_385  = 0x5020
-    RTD_CUSTOM_385 = 0x5021
-
-    Frequency_AUTO = 0x0000
-
-    Current_20mA  = 0x2102
-    Current_100mA = 0x2520
-
-@dataclass(frozen=True, kw_only=True)
-class DAQChannelConfiguration:
-    mtype: DAQMeasuremenType = DAQMeasuremenType.OFF
-    range: DAQRange = DAQRange.NONE
-
-    aux1: float = 0.0 # RTD ALpha
-    aux2: float = 0.0 # RTD R0 / Shunt resistance
-    open_thermocouple_detect: bool = True
-
-    computed_aux1: int = 0
-    computed_aux2: int = 0
-    computed_aux3: int = 0
-
-    use_channel_as_alarm_trigger: bool = True
-    alarm1_mode: DAQConfigAlarm = DAQConfigAlarm.OFF
-    alarm2_mode: DAQConfigAlarm = DAQConfigAlarm.OFF
-    alarm1_level: float = 0.0
-    alarm2_level: float = 0.0
-    alarm1_digital: int | None = None
-    alarm2_digital: int | None = None
-
-    mxab_multuplier: float = 1.0
-    mxab_offset: float = 0.0
-
-    def alarm_bits(self) -> int:
-        result = 0x01 if self.use_channel_as_alarm_trigger else 0x00
-        result |= self.alarm1_mode.value << 1
-        result |= self.alarm2_mode.value << 3
-        return result
-
-    def extra_bits(self) -> int:
-        if self.mtype == DAQMeasuremenType.Ohms:
-            return 0x9000
-        if self.mtype == DAQMeasuremenType.Ohms_4Wire or self.mtype == DAQMeasuremenType.RTD:
-            return 0x9001
-
-        if self.mtype == DAQMeasuremenType.Thermocouple:
-            return 0x0001 if self.open_thermocouple_detect else 0x0000
-
-        if self.mtype == DAQMeasuremenType.Current:
-            if self.range == DAQRange.Current_20mA:
-                return 0x7000
-            return 0x7001
-
-        return 0x0000
-
-@dataclass(frozen=True, kw_only=True)
-class DAQConfiguration:
-    speed: DAQConfigSpeed = DAQConfigSpeed.SLOW
-    temperature_fahrenheit: bool = False
-    trigger_out: bool = False
-    drift_correction: bool = True
-    totalizer_debounce: bool = True
-    triggers: list[DAQConfigTrigger] = field(default_factory=lambda: [DAQConfigTrigger.INTERVAL])
-
-    interval_time: float = 1.0
-    alarm_time: float = 1.0
-    analog_channels: list[DAQChannelConfiguration] = field(default_factory=lambda: [])
-    computed_channels: list[DAQChannelConfiguration] = field(default_factory=lambda: [])
-
-    def bits(self) -> int:
-        result = self.speed.value
-        if self.drift_correction or self.speed != DAQConfigSpeed.FAST:
-            result |= DAQConfigBits.DRIFT_CORRECTION.value
-        if self.trigger_out:
-            result |= DAQConfigBits.TRIGGER_OUT.value
-        if self.temperature_fahrenheit:
-            result |= DAQConfigBits.FAHRENHEIT.value
-        if self.totalizer_debounce:
-            result |= DAQConfigBits.TOTALIZER_DEBOUNCE.value
-        for trig in self.triggers:
-            result |= trig.value
-        return result
 
 @dataclass(frozen=True, kw_only=True)
 class DAQReading:
@@ -249,10 +71,10 @@ class NetDAQ:
             return
 
         try:
-            _ = await self.send_rpc(NetDAQCommand.CLEAR_MONITOR_CHANNEL, writer=sock_writer, wait_response=False)
-            _ = await self.send_rpc(NetDAQCommand.STOP, writer=sock_writer, wait_response=False)
-            _ = await self.send_rpc(NetDAQCommand.DISABLE_SPY, writer=sock_writer, wait_response=False)
-            _ = await self.send_rpc(NetDAQCommand.CLOSE, writer=sock_writer, wait_response=False)
+            _ = await self.send_rpc(DAQCommand.CLEAR_MONITOR_CHANNEL, writer=sock_writer, wait_response=False)
+            _ = await self.send_rpc(DAQCommand.STOP, writer=sock_writer, wait_response=False)
+            _ = await self.send_rpc(DAQCommand.DISABLE_SPY, writer=sock_writer, wait_response=False)
+            _ = await self.send_rpc(DAQCommand.CLOSE, writer=sock_writer, wait_response=False)
         except:
             pass
 
@@ -340,7 +162,7 @@ class NetDAQ:
             return b'\x00\x00\x00\x00'
         return self._make_int(1 << bit)
 
-    async def send_rpc(self, command: NetDAQCommand, payload: bytes = b'', writer: StreamWriter | None = None, wait_response: bool = True) -> bytes:
+    async def send_rpc(self, command: DAQCommand, payload: bytes = b'', writer: StreamWriter | None = None, wait_response: bool = True) -> bytes:
         if not writer:
             writer = self._sock_writer
         if not writer:
@@ -367,15 +189,15 @@ class NetDAQ:
         return await response_future
 
     async def ping(self) -> None:
-        _ = await self.send_rpc(NetDAQCommand.PING)
+        _ = await self.send_rpc(DAQCommand.PING)
 
     async def reset_totalizer(self) -> None:
-        _ = await self.send_rpc(NetDAQCommand.RESET_TOTALIZER)
+        _ = await self.send_rpc(DAQCommand.RESET_TOTALIZER)
 
     async def get_base_channel(self) -> int:
-        return self._parse_int(await self.send_rpc(NetDAQCommand.GET_BASE_CHANNEL))
+        return self._parse_int(await self.send_rpc(DAQCommand.GET_BASE_CHANNEL))
 
-    async def get_version_info(self, command: NetDAQCommand = NetDAQCommand.GET_VERSION_INFO) -> list[bytes]:
+    async def get_version_info(self, command: DAQCommand = DAQCommand.GET_VERSION_INFO) -> list[bytes]:
         data = await self.send_rpc(command)
         blobs: list[bytes] = []
         current: list[int] = []
@@ -390,11 +212,11 @@ class NetDAQ:
         return blobs
 
     async def get_lc_version(self) -> list[bytes]:
-        return await self.get_version_info(command=NetDAQCommand.GET_LC_VERSION)
+        return await self.get_version_info(command=DAQCommand.GET_LC_VERSION)
 
     async def wait_for_idle(self) -> None:
         while True:
-            status = self._parse_int(await self.send_rpc(NetDAQCommand.STATUS_QUERY))
+            status = self._parse_int(await self.send_rpc(DAQCommand.STATUS_QUERY))
             if status & 0x80000000 == 0x00000000:
                 break
             await sleep(0.01)
@@ -405,7 +227,7 @@ class NetDAQ:
 
         packet = self._make_time(time) + self._make_int(int(time.microsecond / 1000))
 
-        _ = await self.send_rpc(NetDAQCommand.SET_TIME, packet)
+        _ = await self.send_rpc(DAQCommand.SET_TIME, packet)
         await self.wait_for_idle()
 
     async def set_config(self, config: DAQConfiguration) -> None:
@@ -425,7 +247,7 @@ class NetDAQ:
 
         analog_channels = config.analog_channels
         if len(analog_channels) < self._CHANNEL_COUNT_ANALOG:
-            analog_channels += [DAQChannelConfiguration() for _ in range(self._CHANNEL_COUNT_ANALOG - len(analog_channels))]
+            analog_channels += [DAQAnalogChannelConfiguration() for _ in range(self._CHANNEL_COUNT_ANALOG - len(analog_channels))]
 
         for chan in analog_channels:
             payload += self._make_int(chan.mtype.value) + \
@@ -443,14 +265,14 @@ class NetDAQ:
 
         computed_channels = config.computed_channels
         if len(computed_channels) < self._CHANNEL_COUNT_COMPUTED:
-            computed_channels += [DAQChannelConfiguration() for _ in range(self._CHANNEL_COUNT_COMPUTED - len(computed_channels))]
+            computed_channels += [DAQComputedChannelConfiguration() for _ in range(self._CHANNEL_COUNT_COMPUTED - len(computed_channels))]
 
         for chan in computed_channels:
             payload += self._make_int(chan.mtype.value) + \
-                        self._make_int(chan.range.value) + \
-                        self._make_int(chan.computed_aux1) + \
-                        self._make_int(chan.computed_aux2) + \
-                        self._make_int(chan.computed_aux3) + \
+                        self._NULL_INTEGER + \
+                        self._make_int(chan.channel_a) + \
+                        self._NULL_INTEGER + \
+                        self._make_int(chan.aux1) + \
                         self._make_int(chan.alarm_bits()) + \
                         self._make_float(chan.alarm1_level) + \
                         self._make_float(chan.alarm2_level) + \
@@ -460,17 +282,17 @@ class NetDAQ:
                         self._make_float(chan.mxab_offset)
 
         payload = payload + (b'\x00' * (2492 - len(payload)))
-        _ = await self.send_rpc(NetDAQCommand.SET_CONFIG, payload)
+        _ = await self.send_rpc(DAQCommand.SET_CONFIG, payload)
         await self.wait_for_idle()
 
     async def set_monitor_channel(self, channel: int) -> None:
         if channel <= 0:
-            _ = await self.send_rpc(NetDAQCommand.CLEAR_MONITOR_CHANNEL)
+            _ = await self.send_rpc(DAQCommand.CLEAR_MONITOR_CHANNEL)
         else:
-            _ = await self.send_rpc(NetDAQCommand.SET_MONITOR_CHANNEL, self._make_int(channel))
+            _ = await self.send_rpc(DAQCommand.SET_MONITOR_CHANNEL, self._make_int(channel))
 
     async def get_readings(self, max_readings: int = 0xFF) -> DAQReadingResult:
-        data = await self.send_rpc(NetDAQCommand.GET_READINGS, self._make_int(max_readings))
+        data = await self.send_rpc(DAQCommand.GET_READINGS, self._make_int(max_readings))
         result: list[DAQReading] = []
 
         chunk_length = self._parse_int(data[0:])
@@ -495,19 +317,19 @@ class NetDAQ:
         return DAQReadingResult(readings=result, instrument_queue=instrument_queue)
 
     async def stop_spy(self) -> None:
-        _ = await self.send_rpc(NetDAQCommand.DISABLE_SPY)
+        _ = await self.send_rpc(DAQCommand.DISABLE_SPY)
 
     async def query_spy(self, channel: int) -> float:
-        return self._parse_float(await self.send_rpc(NetDAQCommand.QUERY_SPY, self._make_int(channel)))
+        return self._parse_float(await self.send_rpc(DAQCommand.QUERY_SPY, self._make_int(channel)))
 
     async def stop(self) -> None:
         try:
-            _ = await self.send_rpc(NetDAQCommand.STOP)
+            _ = await self.send_rpc(DAQCommand.STOP)
         except ResponseErrorCodeException:
             pass
 
     async def start(self) -> None:
-        _ = await self.send_rpc(NetDAQCommand.START, b'\x00' * 16)
+        _ = await self.send_rpc(DAQCommand.START, b'\x00' * 16)
 
     async def handshake(self) -> None:
         await self.ping()
