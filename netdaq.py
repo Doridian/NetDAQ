@@ -215,18 +215,18 @@ class NetDAQ:
         elif len(computed_channels) > self._CHANNEL_COUNT_COMPUTED:
             raise ValueError('Too many computed channels')
 
-        equation_buffer = b''
+        aux_buffer = b''
         for chan in analog_channels:
-            res, equation = chan.write(len(equation_buffer))
+            res, equation = chan.write_with_aux(len(aux_buffer))
             payload += res
-            equation_buffer += equation
+            aux_buffer += equation
 
         for chan in computed_channels:
-            res, equation = chan.write(len(equation_buffer))
+            res, equation = chan.write_with_aux(len(aux_buffer))
             payload += res
-            equation_buffer += equation
+            aux_buffer += equation
 
-        payload += equation_buffer
+        payload += aux_buffer
 
         length_left = CHANNEL_PAYLOAD_LENGTH - len(payload)
         if length_left < 0:

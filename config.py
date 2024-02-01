@@ -1,10 +1,9 @@
 from dataclasses import dataclass, field
 from enums import DAQConfigAlarm, DAQAnalogMeasuremenType, DAQComputedMeasurementType, DAQRange, DAQConfigSpeed, DAQConfigTrigger, DAQConfigBits
-from abc import ABC, abstractmethod
 from encoding import make_int, make_float, make_optional_indexed_bit, NULL_INTEGER
 
 @dataclass(frozen=True, kw_only=True)
-class DAQChannel(ABC):
+class DAQChannel:
     use_channel_as_alarm_trigger: bool = True
     alarm1_mode: DAQConfigAlarm = DAQConfigAlarm.OFF
     alarm2_mode: DAQConfigAlarm = DAQConfigAlarm.OFF
@@ -31,9 +30,11 @@ class DAQChannel(ABC):
                 make_float(self.mxab_multuplier) + \
                 make_float(self.mxab_offset)
 
-    @abstractmethod
-    def write(self, equation_offset: int) -> tuple[bytes, bytes]:
-        pass
+    def write_with_aux(self, aux_offset: int) -> tuple[bytes, bytes]:
+        return self.write(), b''
+
+    def write(self) -> bytes:
+        raise NotImplementedError('write or write_with_equation method must be implemented in subclass')
 
 @dataclass(frozen=True, kw_only=True)
 class DAQAnalogChannel(DAQChannel):
@@ -59,37 +60,68 @@ class DAQAnalogChannel(DAQChannel):
 
         return 0x0000
 
-    def write(self, equation_offset: int) -> tuple[bytes, bytes]:
-        payload = make_int(self.mtype.value) + \
+    def write(self) -> bytes:
+        return make_int(self.mtype.value) + \
                     make_int(self.range.value) + \
                     make_float(self.aux1) + \
                     make_float(self.aux2) + \
                     make_int(self.extra_bits()) + \
                     self.write_common_trailer()
-        return payload, b''
 
 @dataclass(frozen=True, kw_only=True)
 class DAQComputedChannel(DAQChannel):
-    mtype: DAQComputedMeasurementType = DAQComputedMeasurementType.OFF
-    channel_a: int = 0
-    aux1: int = 0 # Channel bitmask / Channel B / Equation offset
-    equation: bytes = b''
+    pass
 
-    def write(self, equation_offset: int) -> tuple[bytes, bytes]:
-        payload = make_int(self.mtype.value) + \
+@dataclass(frozen=True, kw_only=True)
+class DAQComputedAverageChannel(DAQComputedChannel):
+    channel_bitmask: int
+
+    def write(self) -> bytes:
+        return make_int(DAQComputedMeasurementType.Average.value) + \
+                    NULL_INTEGER + \
+                    NULL_INTEGER + \
+                    NULL_INTEGER + \
+                    make_int(self.channel_bitmask) + \
+                    self.write_common_trailer()
+
+@dataclass(frozen=True, kw_only=True)
+class DAQComputedAminusBChannel(DAQComputedChannel):
+    channel_a: int
+    channel_b: int
+
+    def write(self) -> bytes:
+        return make_int(DAQComputedMeasurementType.AminusB.value) + \
                     NULL_INTEGER + \
                     make_int(self.channel_a) + \
-                    NULL_INTEGER
-        
-        if self.mtype == DAQComputedMeasurementType.Equation:
-            if len(self.equation) == 0:
-                raise ValueError('Equation requiredfor equation type channel')
+                    NULL_INTEGER + \
+                    make_int(self.channel_b) + \
+                    self.write_common_trailer()
 
-            payload += make_int(equation_offset)
-        else:
-            payload += make_int(self.aux1)
+@dataclass(frozen=True, kw_only=True)
+class DAQComputedAminusAvgChannel(DAQComputedChannel):
+    channel_a: int
+    channel_bitmask: int
 
-        payload += self.write_common_trailer()
+    def write(self) -> bytes:
+        return make_int(DAQComputedMeasurementType.AminusB.value) + \
+                    NULL_INTEGER + \
+                    make_int(self.channel_a) + \
+                    NULL_INTEGER + \
+                    make_int(self.channel_bitmask) + \
+                    self.write_common_trailer()
+
+@dataclass(frozen=True, kw_only=True)
+class DAQComputedEquationChannel(DAQComputedChannel):
+    equation: bytes = b''
+
+    def write_with_aux(self, aux_offset: int) -> tuple[bytes, bytes]:
+        payload = make_int(DAQComputedMeasurementType.Equation.value) + \
+                    NULL_INTEGER + \
+                    NULL_INTEGER + \
+                    NULL_INTEGER + \
+                    make_int(aux_offset) + \
+                    self.write_common_trailer()
+
         return payload, self.equation
 
 @dataclass(frozen=True, kw_only=True)
