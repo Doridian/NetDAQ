@@ -116,7 +116,7 @@ class DAQRange(Enum):
     Current_20mA  = 0x2102
     Current_100mA = 0x2520
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True)
 class DAQChannelConfiguration:
     mtype: DAQMeasuremenType = DAQMeasuremenType.OFF
     range: DAQRange = DAQRange.NONE
@@ -162,7 +162,7 @@ class DAQChannelConfiguration:
 
         return 0x0000
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True)
 class DAQConfiguration:
     speed: DAQConfigSpeed = DAQConfigSpeed.SLOW
     temperature_fahrenheit: bool = False
@@ -190,7 +190,7 @@ class DAQConfiguration:
             result |= trig.value
         return result
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True)
 class DAQReading:
     time: datetime
     dio: int # short
@@ -208,7 +208,7 @@ class DAQReading:
     def is_channel_alarm2(self, index: int) -> bool:
         return self.alarm1_bitmask & (1 << index) != 0
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True)
 class DAQReadingResult:
     readings: list[DAQReading]
     instrument_queue: int
