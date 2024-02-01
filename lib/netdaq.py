@@ -5,7 +5,7 @@ from traceback import print_exc
 from .config.enums import DAQCommand
 from .config.instrument import DAQConfiguration
 from .config.channels.base import DAQDisabledChannel
-from .utils.encoding import make_int, parse_float, parse_int, parse_short, make_time, parse_time, INT_LEN
+from .utils.encoding import make_int, parse_float, parse_int, parse_short, make_time, parse_time, INT_LEN, NULL_INTEGER
 
 class ResponseErrorCodeException(Exception):
     def __init__(self, code: int, payload: bytes) -> None:
@@ -43,7 +43,6 @@ class NetDAQ:
     _HEADER_LEN = 16
     _CHANNEL_COUNT_ANALOG = 20
     _CHANNEL_COUNT_COMPUTED = 10
-    _NULL_INTEGER = b'\x00' * INT_LEN
 
     ip: str
     port: int
@@ -191,17 +190,17 @@ class NetDAQ:
 
     async def set_config(self, config: DAQConfiguration) -> None:
         payload = make_int(config.bits()) + \
-                    self._NULL_INTEGER + \
-                    self._NULL_INTEGER + \
+                    NULL_INTEGER + \
+                    NULL_INTEGER + \
                     make_int(int(config.interval_time)) + \
                     make_int(int(config.interval_time * 1000) % 1000) + \
-                    self._NULL_INTEGER + \
-                    self._NULL_INTEGER + \
+                    NULL_INTEGER + \
+                    NULL_INTEGER + \
                     make_int(int(config.alarm_time)) + \
                     make_int(int(config.alarm_time * 1000) % 1000) + \
-                    self._NULL_INTEGER + \
-                    self._NULL_INTEGER + \
-                    self._NULL_INTEGER + \
+                    NULL_INTEGER + \
+                    NULL_INTEGER + \
+                    NULL_INTEGER + \
                     b'\x00\x00\x00\x64'
 
         analog_channels = config.analog_channels
