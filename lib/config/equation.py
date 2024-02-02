@@ -28,11 +28,13 @@ class DAQEquationOpcode(Enum):
     SQRT         = DAQEquationOpcodeConfig(0x0F, [], 1, 1)
 
 class DAQEquationOperation:
-    opcode: DAQEquationOpcode
-    params: list[Any]
+    _opcode: DAQEquationOpcode
+    _params: list[Any]
 
     def __init__(self, opcode: DAQEquationOpcode, params: list[Any]) -> None:
         super().__init__()
+
+        params = params.copy()
 
         expected_types = opcode.value.args
         if len(expected_types) != len(params):
@@ -42,25 +44,28 @@ class DAQEquationOperation:
             if not isinstance(arg, expected_type):
                 raise ValueError(f"Invalid type for argument {i} of opcode {opcode.name} (expected {expected_type}, got {type(arg)})")
 
-        self.opcode = opcode
-        self.params = params
+        self._opcode = opcode
+        self._params = params
 
     def encode(self) -> bytes:
-        expected_types = self.opcode.value.args
+        expected_types = self._opcode.value.args
 
-        payload = bytes([self.opcode.value.code])
-        for i, (expected_type, arg) in enumerate(zip(expected_types, self.params)):
+        payload = bytes([self._opcode.value.code])
+        for i, (expected_type, arg) in enumerate(zip(expected_types, self._params)):
             if not isinstance(arg, expected_type):
-                raise ValueError(f"UNREACHABLE: Late invalid type for argument {i} of opcode {self.opcode.name} (expected {expected_type}, got {type(arg)})")
+                raise ValueError(f"UNREACHABLE: Late invalid type for argument {i} of opcode {self._opcode.name} (expected {expected_type}, got {type(arg)})")
 
             if expected_type == int:
                 payload += make_int(cast(int, arg))
             elif expected_type == float:
                 payload += make_float(cast(float, arg))
             else:
-                raise ValueError(f"UNREACHABLE: Invalid instruction parameter type {expected_type} for opcode {self.opcode.name}")
+                raise ValueError(f"UNREACHABLE: Invalid instruction parameter type {expected_type} for opcode {self._opcode.name}")
 
         return payload
+
+    def get_opcode(self) -> DAQEquationOpcode:
+        return self._opcode
 
 class DAQEquation:
     _ops: list[DAQEquationOperation]
@@ -75,15 +80,17 @@ class DAQEquation:
         if self._has_end:
             raise ValueError("Cannot add operation to equation after end opcode")
 
-        if op.opcode == DAQEquationOpcode.EXIT:
+        opcode_enum = op.get_opcode()
+
+        if opcode_enum == DAQEquationOpcode.EXIT:
             if self._stack_depth != 1:
                 raise ValueError(f"Invalid stack depth at end of equation (expected 1, got {self._stack_depth})")
             self._has_end = True
 
-        opcode = op.opcode.value
+        opcode = opcode_enum.value
 
         if self._stack_depth < opcode.pops:
-            raise ValueError(f"Stack underflow for opcode {op.opcode.name} (expected >= {opcode.pops} elements, got {self._stack_depth})")
+            raise ValueError(f"Stack underflow for opcode {opcode_enum.name} (expected >= {opcode.pops} elements, got {self._stack_depth})")
         
         self._stack_depth -= opcode.pops
         self._stack_depth += opcode.pushes
