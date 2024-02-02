@@ -217,12 +217,12 @@ class NetDAQ:
 
         aux_buffer = b''
         for chan in analog_channels:
-            res, equation = chan.write_with_aux(len(aux_buffer))
+            res, equation = chan.encode_with_aux(len(aux_buffer))
             payload += res
             aux_buffer += equation
 
         for chan in computed_channels:
-            res, equation = chan.write_with_aux(len(aux_buffer))
+            res, equation = chan.encode_with_aux(len(aux_buffer))
             payload += res
             aux_buffer += equation
 

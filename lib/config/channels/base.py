@@ -15,15 +15,15 @@ class DAQChannel:
 
     mxab_multuplier: float = 1.0
     mxab_offset: float = 0.0
-
-    def alarm_bits(self) -> int:
-        result = 0x01 if self.use_channel_as_alarm_trigger else 0x00
-        result |= self.alarm1_mode.value << 1
-        result |= self.alarm2_mode.value << 3
-        return result
     
-    def write_common_trailer(self) -> bytes:
-        return make_int(self.alarm_bits()) + \
+    def encode_common_trailer(self) -> bytes:
+        alarm_bits = 0x00
+        if self.use_channel_as_alarm_trigger:
+            alarm_bits |= 0x01
+        alarm_bits |= self.alarm1_mode.value << 1
+        alarm_bits |= self.alarm2_mode.value << 3
+
+        return make_int(alarm_bits) + \
                 make_float(self.alarm1_level) + \
                 make_float(self.alarm2_level) + \
                 make_optional_indexed_bit(self.alarm1_digital) + \
@@ -31,23 +31,23 @@ class DAQChannel:
                 make_float(self.mxab_multuplier) + \
                 make_float(self.mxab_offset)
 
-    def write_with_aux(self, aux_offset: int) -> tuple[bytes, bytes]:
-        return self.write(), b''
+    def encode_with_aux(self, aux_offset: int) -> tuple[bytes, bytes]:
+        return self.encode(), b''
 
-    def write(self) -> bytes:
+    def encode(self) -> bytes:
         raise NotImplementedError('write or write_with_aux method must be implemented in subclass')
 
 
 @dataclass(frozen=True, kw_only=True)
 class DAQDisabledChannel(DAQChannel):
     @override
-    def write(self) -> bytes:
+    def encode(self) -> bytes:
             return NULL_INT + \
                     NULL_INT + \
                     NULL_INT + \
                     NULL_INT + \
                     NULL_INT + \
-                    self.write_common_trailer()
+                    self.encode_common_trailer()
 
 @dataclass(frozen=True, kw_only=True)
 class DAQAnalogChannel(DAQChannel):
