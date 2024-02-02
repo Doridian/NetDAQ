@@ -1,25 +1,33 @@
 from enum import Enum
 from typing import Any
 from ..utils.encoding import make_int, make_float
+from dataclasses import dataclass
 
 _empty_list_types: list[type] = []
 
+@dataclass(frozen=True, eq=True)
+class DAQEquationOpcodeConfig:
+    code: int
+    args: list[type]
+    pops: int
+    pushes: int
+
 class DAQEquationOpcode(Enum):
-    EXIT         = (0x00, _empty_list_types)
-    PUSH_CHANNEL = (0x01, [int])
-    PUSH_FLOAT   = (0x02, [float])
-    UNARY_MINUS  = (0x04, _empty_list_types)
-    SUBTRACT     = (0x05, _empty_list_types)
-    ADD          = (0x06, _empty_list_types)
-    MULTIPLY     = (0x07, _empty_list_types)
-    DIVIDE       = (0x08, _empty_list_types)
-    POWER        = (0x09, _empty_list_types)
-    EXP          = (0x0A, _empty_list_types)
-    LN           = (0x0B, _empty_list_types)
-    LOG          = (0x0C, _empty_list_types)
-    ABS          = (0x0D, _empty_list_types)
-    INT          = (0x0E, _empty_list_types)
-    SQRT         = (0x0F, _empty_list_types)
+    EXIT         = DAQEquationOpcodeConfig(0x00, _empty_list_types, 1, 0)
+    PUSH_CHANNEL = DAQEquationOpcodeConfig(0x01, [int], 0, 1)
+    PUSH_FLOAT   = DAQEquationOpcodeConfig(0x02, [float], 0, 1)
+    UNARY_MINUS  = DAQEquationOpcodeConfig(0x04, _empty_list_types, 1, 1)
+    SUBTRACT     = DAQEquationOpcodeConfig(0x05, _empty_list_types, 2, 1)
+    ADD          = DAQEquationOpcodeConfig(0x06, _empty_list_types, 2, 1)
+    MULTIPLY     = DAQEquationOpcodeConfig(0x07, _empty_list_types, 2, 1)
+    DIVIDE       = DAQEquationOpcodeConfig(0x08, _empty_list_types, 2, 1)
+    POWER        = DAQEquationOpcodeConfig(0x09, _empty_list_types, 2, 1)
+    EXP          = DAQEquationOpcodeConfig(0x0A, _empty_list_types, 1, 1)
+    LN           = DAQEquationOpcodeConfig(0x0B, _empty_list_types, 1, 1)
+    LOG          = DAQEquationOpcodeConfig(0x0C, _empty_list_types, 1, 1)
+    ABS          = DAQEquationOpcodeConfig(0x0D, _empty_list_types, 1, 1)
+    INT          = DAQEquationOpcodeConfig(0x0E, _empty_list_types, 1, 1)
+    SQRT         = DAQEquationOpcodeConfig(0x0F, _empty_list_types, 1, 1)
 
 class DAQEquationOperation:
     opcode: DAQEquationOpcode
@@ -28,7 +36,7 @@ class DAQEquationOperation:
     def __init__(self, opcode: DAQEquationOpcode, params: list[Any]) -> None:
         super().__init__()
 
-        expected_types = opcode.value[1]
+        expected_types = opcode.value.args
         if len(expected_types) != len(params):
             raise ValueError(f"Invalid number of arguments for opcode {opcode.name} (expected {len(expected_types)}, got {len(params)})")
 
@@ -40,9 +48,9 @@ class DAQEquationOperation:
         self.params = params
 
     def encode(self) -> bytes:
-        expected_types = self.opcode.value[1]
+        expected_types = self.opcode.value.args
 
-        payload = bytes([self.opcode.value[0]])
+        payload = bytes([self.opcode.value.code])
         for i, (expected_type, arg) in enumerate(zip(expected_types, self.params)):
             if not isinstance(arg, expected_type):
                 raise ValueError(f"UNREACHABLE: Late invalid type for argument {i} of opcode {self.opcode.name} (expected {expected_type}, got {type(arg)})")
@@ -57,70 +65,104 @@ class DAQEquationOperation:
         return payload
 
 class DAQEquation:
-    ops: list[DAQEquationOperation]
+    _ops: list[DAQEquationOperation]
+    _has_end: bool = False
+    _stack_depth: int = 0
 
     def __init__(self) -> None:
         super().__init__()
-        self.ops = []
+        self._ops = []
+
+    def _push_op(self, op: DAQEquationOperation) -> None:
+        if self._has_end:
+            raise ValueError("Cannot add operation to equation after end opcode")
+
+        if op.opcode == DAQEquationOpcode.EXIT:
+            if self._stack_depth != 1:
+                raise ValueError(f"Invalid stack depth at end of equation (expected 1, got {self._stack_depth})")
+            self._has_end = True
+
+        opcode = op.opcode.value
+
+        if self._stack_depth < opcode.pops:
+            raise ValueError(f"Stack underflow for opcode {op.opcode.name} (expected >= {opcode.pops} elements, got {self._stack_depth})")
+        
+        self._stack_depth -= opcode.pops
+        self._stack_depth += opcode.pushes
+
+        self._ops.append(op)
+
+    def clear(self) -> "DAQEquation":
+        self._ops = []
+        self._has_end = False
+        self._stack_depth = 0
+        return self
+
+    def end(self) -> "DAQEquation":
+        self._push_op(DAQEquationOperation(DAQEquationOpcode.EXIT, []))
+        return self
 
     def push_channel(self, channel: int) -> "DAQEquation":
-        self.ops.append(DAQEquationOperation(DAQEquationOpcode.PUSH_CHANNEL, [channel]))
+        self._push_op(DAQEquationOperation(DAQEquationOpcode.PUSH_CHANNEL, [channel]))
         return self
 
     def push_float(self, value: float) -> "DAQEquation":
-        self.ops.append(DAQEquationOperation(DAQEquationOpcode.PUSH_FLOAT, [value]))
+        self._push_op(DAQEquationOperation(DAQEquationOpcode.PUSH_FLOAT, [value]))
         return self
 
     def unary_minus(self) -> "DAQEquation":
-        self.ops.append(DAQEquationOperation(DAQEquationOpcode.UNARY_MINUS, []))
+        self._push_op(DAQEquationOperation(DAQEquationOpcode.UNARY_MINUS, []))
         return self
 
     def subtract(self) -> "DAQEquation":
-        self.ops.append(DAQEquationOperation(DAQEquationOpcode.SUBTRACT, []))
+        self._push_op(DAQEquationOperation(DAQEquationOpcode.SUBTRACT, []))
         return self
 
     def add(self) -> "DAQEquation":
-        self.ops.append(DAQEquationOperation(DAQEquationOpcode.ADD, []))
+        self._push_op(DAQEquationOperation(DAQEquationOpcode.ADD, []))
         return self
 
     def multiply(self) -> "DAQEquation":
-        self.ops.append(DAQEquationOperation(DAQEquationOpcode.MULTIPLY, []))
+        self._push_op(DAQEquationOperation(DAQEquationOpcode.MULTIPLY, []))
         return self
 
     def divide(self) -> "DAQEquation":
-        self.ops.append(DAQEquationOperation(DAQEquationOpcode.DIVIDE, []))
+        self._push_op(DAQEquationOperation(DAQEquationOpcode.DIVIDE, []))
         return self
 
     def power(self) -> "DAQEquation":
-        self.ops.append(DAQEquationOperation(DAQEquationOpcode.POWER, []))
+        self._push_op(DAQEquationOperation(DAQEquationOpcode.POWER, []))
         return self
 
     def exp(self) -> "DAQEquation":
-        self.ops.append(DAQEquationOperation(DAQEquationOpcode.EXP, []))
+        self._push_op(DAQEquationOperation(DAQEquationOpcode.EXP, []))
         return self
 
     def ln(self) -> "DAQEquation":
-        self.ops.append(DAQEquationOperation(DAQEquationOpcode.LN, []))
+        self._push_op(DAQEquationOperation(DAQEquationOpcode.LN, []))
         return self
 
     def log(self) -> "DAQEquation":
-        self.ops.append(DAQEquationOperation(DAQEquationOpcode.LOG, []))
+        self._push_op(DAQEquationOperation(DAQEquationOpcode.LOG, []))
         return self
 
     def abs(self) -> "DAQEquation":
-        self.ops.append(DAQEquationOperation(DAQEquationOpcode.ABS, []))
+        self._push_op(DAQEquationOperation(DAQEquationOpcode.ABS, []))
         return self
 
     def int(self) -> "DAQEquation":
-        self.ops.append(DAQEquationOperation(DAQEquationOpcode.INT, []))
+        self._push_op(DAQEquationOperation(DAQEquationOpcode.INT, []))
         return self
 
     def sqrt(self) -> "DAQEquation":
-        self.ops.append(DAQEquationOperation(DAQEquationOpcode.SQRT, []))
+        self._push_op(DAQEquationOperation(DAQEquationOpcode.SQRT, []))
         return self
 
     def encode(self) -> bytes:
+        if not self._has_end:
+            raise ValueError("Cannot encode equation without end opcode")
+
         payload = b''
-        for op in self.ops:
+        for op in self._ops:
             payload += op.encode()
         return payload

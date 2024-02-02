@@ -4,8 +4,13 @@ from lib.netdaq import NetDAQ
 from lib.config.instrument import DAQConfiguration, DAQConfigTrigger
 from lib.config.enums import DAQVDCRange, DAQConfigAlarm
 from lib.config.channels.analog import DAQAnalogVDCChannel
+from lib.config.equation import DAQEquation
 from sys import argv
 from asyncio import run, sleep
+
+async def main2():
+    eq = DAQEquation()
+    print(eq.push_channel(1).push_float(10.0).add().end().encode())
 
 async def main():
     instrument = NetDAQ(ip=argv[1], port=4369)
