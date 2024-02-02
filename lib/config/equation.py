@@ -1,33 +1,31 @@
 from enum import Enum
-from typing import Any
+from typing import Any, cast
 from ..utils.encoding import make_int, make_float
 from dataclasses import dataclass
-
-_empty_list_types: list[type] = []
 
 @dataclass(frozen=True, eq=True)
 class DAQEquationOpcodeConfig:
     code: int
-    args: list[type]
+    args: list[type[int] | type[float]]
     pops: int
     pushes: int
 
 class DAQEquationOpcode(Enum):
-    EXIT         = DAQEquationOpcodeConfig(0x00, _empty_list_types, 1, 0)
+    EXIT         = DAQEquationOpcodeConfig(0x00, [], 1, 0)
     PUSH_CHANNEL = DAQEquationOpcodeConfig(0x01, [int], 0, 1)
     PUSH_FLOAT   = DAQEquationOpcodeConfig(0x02, [float], 0, 1)
-    UNARY_MINUS  = DAQEquationOpcodeConfig(0x04, _empty_list_types, 1, 1)
-    SUBTRACT     = DAQEquationOpcodeConfig(0x05, _empty_list_types, 2, 1)
-    ADD          = DAQEquationOpcodeConfig(0x06, _empty_list_types, 2, 1)
-    MULTIPLY     = DAQEquationOpcodeConfig(0x07, _empty_list_types, 2, 1)
-    DIVIDE       = DAQEquationOpcodeConfig(0x08, _empty_list_types, 2, 1)
-    POWER        = DAQEquationOpcodeConfig(0x09, _empty_list_types, 2, 1)
-    EXP          = DAQEquationOpcodeConfig(0x0A, _empty_list_types, 1, 1)
-    LN           = DAQEquationOpcodeConfig(0x0B, _empty_list_types, 1, 1)
-    LOG          = DAQEquationOpcodeConfig(0x0C, _empty_list_types, 1, 1)
-    ABS          = DAQEquationOpcodeConfig(0x0D, _empty_list_types, 1, 1)
-    INT          = DAQEquationOpcodeConfig(0x0E, _empty_list_types, 1, 1)
-    SQRT         = DAQEquationOpcodeConfig(0x0F, _empty_list_types, 1, 1)
+    UNARY_MINUS  = DAQEquationOpcodeConfig(0x04, [], 1, 1)
+    SUBTRACT     = DAQEquationOpcodeConfig(0x05, [], 2, 1)
+    ADD          = DAQEquationOpcodeConfig(0x06, [], 2, 1)
+    MULTIPLY     = DAQEquationOpcodeConfig(0x07, [], 2, 1)
+    DIVIDE       = DAQEquationOpcodeConfig(0x08, [], 2, 1)
+    POWER        = DAQEquationOpcodeConfig(0x09, [], 2, 1)
+    EXP          = DAQEquationOpcodeConfig(0x0A, [], 1, 1)
+    LN           = DAQEquationOpcodeConfig(0x0B, [], 1, 1)
+    LOG          = DAQEquationOpcodeConfig(0x0C, [], 1, 1)
+    ABS          = DAQEquationOpcodeConfig(0x0D, [], 1, 1)
+    INT          = DAQEquationOpcodeConfig(0x0E, [], 1, 1)
+    SQRT         = DAQEquationOpcodeConfig(0x0F, [], 1, 1)
 
 class DAQEquationOperation:
     opcode: DAQEquationOpcode
@@ -56,9 +54,9 @@ class DAQEquationOperation:
                 raise ValueError(f"UNREACHABLE: Late invalid type for argument {i} of opcode {self.opcode.name} (expected {expected_type}, got {type(arg)})")
 
             if expected_type == int:
-                payload += make_int(arg)
+                payload += make_int(cast(int, arg))
             elif expected_type == float:
-                payload += make_float(arg)
+                payload += make_float(cast(float, arg))
             else:
                 raise ValueError(f"UNREACHABLE: Invalid instruction parameter type {expected_type} for opcode {self.opcode.name}")
 
