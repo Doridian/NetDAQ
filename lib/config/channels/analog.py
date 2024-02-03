@@ -118,7 +118,16 @@ class DAQAnalogCurrentChannel(DAQAnalogChannel):
 
     @override
     def _modified_mxab_multiplier(self) -> float:
-        return self.mxab_multuplier * (1 / self.shunt_resistance)
+        modified_multiplier = self.mxab_multuplier * (1 / self.shunt_resistance)
+        if self.range == DAQCurrentRange.Current_20mA:
+            modified_multiplier *= 6250.0
+        return modified_multiplier
+
+    @override
+    def _modified_mxab_offset(self) -> float:
+        if self.range == DAQCurrentRange.Current_20mA:
+            return self.mxab_offset - 25.0
+        return self.mxab_offset
 
     @override
     def encode(self) -> bytes:

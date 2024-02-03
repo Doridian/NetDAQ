@@ -186,7 +186,7 @@ Equations
         - 0x00 0x00 0x00 0x08 = Frequency
         - 0x00 0x00 0x00 0x10 = RTD
         - 0x00 0x00 0x00 0x20 = Thermocouple
-        - 0x00 0x01 0x00 0x02 = Current (this seems to adjust the MxA+B multiplier by "A = A * (1 / Shunt_resistance)")
+        - 0x00 0x01 0x00 0x02 = Current
     - Computed channels
         - 0x00 0x00 0x80 0x01 = Average
         - 0x00 0x00 0x80 0x02 = A - B
@@ -234,7 +234,10 @@ Equations
         - 0x00 0x00 0x00 0x00 = Auto
     - Current
         - 0x00 0x00 0x21 0x02 = 4-20 mA
+            - Adjust the MxA+B multiplier by `A = A * (1 / Shunt_resistance) * 6250`
+            - Adjust MxA+B offset by `B = B - 25`
         - 0x00 0x00 0x25 0x20 = 0-100 mA
+            - Adjust the MxA+B multiplier by `A = A * (1 / Shunt_resistance)`
 - Extra configuration
     - Analog channels
         - RTD Alpha 32-bit float
