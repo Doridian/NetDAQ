@@ -15,6 +15,9 @@ class DAQChannel:
 
     mxab_multuplier: float = 1.0
     mxab_offset: float = 0.0
+
+    def _modified_mxab_multiplier(self) -> float:
+        return self.mxab_multuplier
     
     def encode_common_trailer(self) -> bytes:
         alarm_bits = 0x00
@@ -28,7 +31,7 @@ class DAQChannel:
                 make_float(self.alarm2_level) + \
                 make_optional_indexed_bit(self.alarm1_digital) + \
                 make_optional_indexed_bit(self.alarm2_digital) + \
-                make_float(self.mxab_multuplier) + \
+                make_float(self._modified_mxab_multiplier()) + \
                 make_float(self.mxab_offset)
 
     def encode_with_aux(self, aux_offset: int) -> tuple[bytes, bytes]:
