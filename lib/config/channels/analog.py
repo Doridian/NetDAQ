@@ -112,6 +112,8 @@ class DAQAnalogCurrentChannel(DAQAnalogChannel):
     range: DAQCurrentRange
     shunt_resistance: float
 
+    # TODO: Stock app seems to adjust MxA+B parameters based on shunt resistance
+
     def __post_init__(self) -> None:
         if self.shunt_resistance < 10 or self.shunt_resistance > 250:
             raise ValueError("Shunt resistance must be between 10 and 250 Ohms")
