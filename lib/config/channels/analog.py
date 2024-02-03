@@ -67,7 +67,18 @@ class DAQAnalogFrequencyChannel(DAQAnalogChannel):
 class DAQAnalogRTDChannel(DAQAnalogChannel):
     range: DAQRTDRange
     alpha: float = 0.0
-    r0: float = 0.0
+    r0: float
+
+    def __post_init__(self) -> None:
+        if self.r0 < 10 or self.r0 > 1010:
+            raise ValueError("Custom RTD R0 value must be between 10 and 1010 Ohms")
+
+        if self.range == DAQRTDRange.RTD_FIXED_385:
+            if self.alpha != 0.0:
+                raise ValueError("Fixed RTD does not allow for Alpha value to be set")
+        elif self.range == DAQRTDRange.RTD_CUSTOM_385:
+            if self.alpha < 0.00374 or self.alpha > 0.00393:
+                raise ValueError("Custom RTD Alpha value must be between 0.00374 and 0.00393")
 
     @override
     def encode(self) -> bytes:
@@ -99,6 +110,11 @@ class DAQAnalogThermocoupleChannel(DAQAnalogChannel):
 @dataclass(frozen=True, kw_only=True)
 class DAQAnalogCurrentChannel(DAQAnalogChannel):
     range: DAQCurrentRange
+    shunt_resistance: float
+
+    def __post_init__(self) -> None:
+        if self.shunt_resistance < 10 or self.shunt_resistance > 250:
+            raise ValueError("Shunt resistance must be between 10 and 250 Ohms")
 
     @override
     def encode(self) -> bytes:
@@ -108,7 +124,7 @@ class DAQAnalogCurrentChannel(DAQAnalogChannel):
 
         return make_int(DAQAnalogMeasuremenType.Current.value) + \
                     make_int(self.range.value) + \
-                    NULL_INT + \
+                    make_float(self.shunt_resistance) + \
                     NULL_INT + \
                     make_int(extra_bits) + \
                     self.encode_common_trailer()
