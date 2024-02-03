@@ -110,9 +110,8 @@ class DAQAnalogThermocoupleChannel(DAQAnalogChannel):
 @dataclass(frozen=True, kw_only=True)
 class DAQAnalogCurrentChannel(DAQAnalogChannel):
     range: DAQCurrentRange
-    shunt_resistance: float
-
     # TODO: Stock app seems to adjust MxA+B parameters based on shunt resistance
+    shunt_resistance: float
 
     def __post_init__(self) -> None:
         if self.shunt_resistance < 10 or self.shunt_resistance > 250:
