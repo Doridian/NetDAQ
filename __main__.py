@@ -2,8 +2,8 @@
 
 from lib.netdaq import NetDAQ
 from lib.config.instrument import DAQConfiguration, DAQConfigTrigger
-from lib.config.enums import DAQVDCRange, DAQConfigAlarm
-from lib.config.channels.analog import DAQAnalogVDCChannel
+from lib.config.enums import *
+from lib.config.channels.analog import *
 from lib.config.equation import DAQEquation
 from sys import argv
 from asyncio import run, sleep
@@ -34,8 +34,9 @@ async def main():
             triggers=[DAQConfigTrigger.INTERVAL],
             interval_time=0.5,
             analog_channels=[
-                DAQAnalogVDCChannel(
-                    range=DAQVDCRange.VDC_90mV,
+                DAQAnalogOhmsChannel(
+                    range=DAQOhmsRange.Ohms_3k,
+                    four_wire=False,
                 ),
             ],
             computed_channels=[],

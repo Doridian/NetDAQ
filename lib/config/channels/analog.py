@@ -6,8 +6,12 @@ from typing import override
 
 @dataclass(frozen=True, kw_only=True)
 class DAQAnalogOhmsChannel(DAQAnalogChannel):
-    four_wire: bool = False
     range: DAQOhmsRange
+    four_wire: bool = False
+
+    def __post_init__(self) -> None:
+        if (not self.four_wire) and (self.range == DAQOhmsRange.Ohms_300 or self.range == DAQOhmsRange.Ohms_3k):
+            raise ValueError("2-wire ohms measurement is not supported for 300 or 3k Ohms range")
 
     @override
     def encode(self) -> bytes:
