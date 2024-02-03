@@ -35,13 +35,7 @@ async def main():
             interval_time=0.5,
             analog_channels=[
                 DAQAnalogVDCChannel(
-                    range=DAQVDCRange.VDC_3V,
-                    alarm1_mode=DAQConfigAlarm.LOW,
-                    alarm1_level=2.0,
-                    alarm1_digital=5,
-                    alarm2_mode=DAQConfigAlarm.LOW,
-                    alarm2_level=-3.0,
-                    alarm2_digital=6,
+                    range=DAQVDCRange.VDC_90mV,
                 ),
             ],
             computed_channels=[],
