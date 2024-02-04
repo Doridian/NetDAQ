@@ -1,5 +1,6 @@
 from enum import Enum
 from typing import Any, cast
+from .base import ConfigError
 from ..utils.encoding import make_int, make_float
 from dataclasses import dataclass
 
@@ -38,11 +39,11 @@ class DAQEquationOperation:
 
         expected_types = opcode.value.args
         if len(expected_types) != len(params):
-            raise ValueError(f"Invalid number of arguments for opcode {opcode.name} (expected {len(expected_types)}, got {len(params)})")
+            raise ConfigError(f"Invalid number of arguments for opcode {opcode.name} (expected {len(expected_types)}, got {len(params)})")
 
         for i, (expected_type, arg) in enumerate(zip(expected_types, params)):
             if not isinstance(arg, expected_type):
-                raise ValueError(f"Invalid type for argument {i} of opcode {opcode.name} (expected {expected_type}, got {type(arg)})")
+                raise ConfigError(f"Invalid type for argument {i} of opcode {opcode.name} (expected {expected_type}, got {type(arg)})")
 
         self._opcode = opcode
         self._params = params
@@ -53,14 +54,14 @@ class DAQEquationOperation:
         payload = bytes([self._opcode.value.code])
         for i, (expected_type, arg) in enumerate(zip(expected_types, self._params)):
             if not isinstance(arg, expected_type):
-                raise ValueError(f"UNREACHABLE: Late invalid type for argument {i} of opcode {self._opcode.name} (expected {expected_type}, got {type(arg)})")
+                raise ConfigError(f"UNREACHABLE: Late invalid type for argument {i} of opcode {self._opcode.name} (expected {expected_type}, got {type(arg)})")
 
             if expected_type == int:
                 payload += make_int(cast(int, arg))
             elif expected_type == float:
                 payload += make_float(cast(float, arg))
             else:
-                raise ValueError(f"UNREACHABLE: Invalid instruction parameter type {expected_type} for opcode {self._opcode.name}")
+                raise ConfigError(f"UNREACHABLE: Invalid instruction parameter type {expected_type} for opcode {self._opcode.name}")
 
         return payload
 
@@ -70,6 +71,7 @@ class DAQEquationOperation:
 class DAQEquation:
     _ops: list[DAQEquationOperation]
     _has_end: bool = False
+    _has_channel: bool = False
     _stack_depth: int = 0
 
     def __init__(self) -> None:
@@ -78,37 +80,43 @@ class DAQEquation:
 
     def _push_op(self, op: DAQEquationOperation) -> None:
         if self._has_end:
-            raise ValueError("Cannot add operation to equation after end opcode")
+            raise ConfigError("Cannot add operation to equation after end opcode")
 
         opcode_enum = op.get_opcode()
-
-        if opcode_enum == DAQEquationOpcode.EXIT:
-            if self._stack_depth != 1:
-                raise ValueError(f"Invalid stack depth at end of equation (expected 1, got {self._stack_depth})")
-            self._has_end = True
-
         opcode = opcode_enum.value
 
         if self._stack_depth < opcode.pops:
-            raise ValueError(f"Stack underflow for opcode {opcode_enum.name} (expected >= {opcode.pops} elements, got {self._stack_depth})")
+            raise ConfigError(f"Stack underflow for opcode {opcode_enum.name} (expected >= {opcode.pops} elements, got {self._stack_depth})")
         
         self._stack_depth -= opcode.pops
         self._stack_depth += opcode.pushes
 
         self._ops.append(op)
 
+    def validate(self) -> None:
+        if not self._has_end:
+            raise ConfigError("Equation is missing end opcode")
+
+        if not self._has_channel:
+            raise ConfigError("Equation requires at least one channel reference")
+
     def clear(self) -> "DAQEquation":
         self._ops = []
+        self._has_channel = False
         self._has_end = False
         self._stack_depth = 0
         return self
 
     def end(self) -> "DAQEquation":
+        if self._stack_depth != 1:
+            raise ConfigError(f"Invalid stack depth at end of equation (expected 1, got {self._stack_depth})")
         self._push_op(DAQEquationOperation(DAQEquationOpcode.EXIT, []))
+        self._has_end = True
         return self
 
     def push_channel(self, channel: int) -> "DAQEquation":
         self._push_op(DAQEquationOperation(DAQEquationOpcode.PUSH_CHANNEL, [channel]))
+        self._has_channel = True
         return self
 
     def push_float(self, value: float) -> "DAQEquation":
@@ -164,9 +172,7 @@ class DAQEquation:
         return self
 
     def encode(self) -> bytes:
-        if not self._has_end:
-            raise ValueError("Cannot encode equation without end opcode")
-
+        self.validate()
         payload = b''
         for op in self._ops:
             payload += op.encode()

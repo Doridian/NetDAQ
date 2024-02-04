@@ -2,10 +2,15 @@ from datetime import datetime
 from dataclasses import dataclass
 from asyncio import sleep, open_connection, StreamReader, StreamWriter, get_event_loop, Future, Task, CancelledError
 from traceback import print_exc
+from .config.base import ConfigError
 from .config.enums import DAQCommand
 from .config.instrument import DAQConfiguration
 from .config.channels.base import DAQDisabledChannel
 from .utils.encoding import make_int, parse_float, parse_int, parse_short, make_time, parse_time, INT_LEN, NULL_INT
+
+CHANNEL_PAYLOAD_LENGTH = 2492
+FIXED_HEADER = bytes([0x46, 0x45, 0x4C, 0x58])
+HEADER_LEN = 16
 
 class ResponseErrorCodeException(Exception):
     def __init__(self, code: int, payload: bytes) -> None:
@@ -36,14 +41,7 @@ class DAQReadingResult:
     readings: list[DAQReading]
     instrument_queue: int
 
-CHANNEL_PAYLOAD_LENGTH = 2492
-
 class NetDAQ:
-    _FIXED_HEADER = bytes([0x46, 0x45, 0x4C, 0x58])
-    _HEADER_LEN = 16
-    _CHANNEL_COUNT_ANALOG = 20
-    _CHANNEL_COUNT_COMPUTED = 10
-
     ip: str
     port: int
     _sock_writer: StreamWriter | None = None
@@ -58,6 +56,12 @@ class NetDAQ:
 
         self._sock_writer = None
         self._response_futures = {}
+
+    def analog_channels(self) -> int:
+        return 20
+
+    def computed_channels(self) -> int:
+        return 10
 
     async def close(self) -> None:
         reader_coroutine = self._reader_coroutine
@@ -85,8 +89,8 @@ class NetDAQ:
     async def _reader_coroutine_func(self, sock_reader: StreamReader) -> None:
         try:
             while True:
-                response_header = await sock_reader.readexactly(len(self._FIXED_HEADER) + (INT_LEN * 3))
-                if response_header[0:len(self._FIXED_HEADER)] != self._FIXED_HEADER:
+                response_header = await sock_reader.readexactly(len(FIXED_HEADER) + (INT_LEN * 3))
+                if response_header[0:len(FIXED_HEADER)] != FIXED_HEADER:
                     raise Exception('Invalid response header')
 
                 response_sequence_id = parse_int(response_header[4:])
@@ -94,8 +98,8 @@ class NetDAQ:
                 response_code = parse_int(response_header[8:])
                 response_payload_length = parse_int(response_header[12:])
 
-                if response_payload_length > self._HEADER_LEN:
-                    payload = await sock_reader.readexactly(response_payload_length - self._HEADER_LEN)
+                if response_payload_length > HEADER_LEN:
+                    payload = await sock_reader.readexactly(response_payload_length - HEADER_LEN)
                 else:
                     payload = b''
 
@@ -129,10 +133,10 @@ class NetDAQ:
         sequence_id = self.sequence_id
         self.sequence_id += 1
 
-        packet = self._FIXED_HEADER + \
+        packet = FIXED_HEADER + \
                     make_int(sequence_id) + \
                     make_int(command.value) + \
-                    make_int(len(payload) + self._HEADER_LEN) + \
+                    make_int(len(payload) + HEADER_LEN) + \
                     payload
 
         response_future: Future[bytes] = get_event_loop().create_future()
@@ -203,17 +207,19 @@ class NetDAQ:
                     NULL_INT + \
                     b'\x00\x00\x00\x64'
 
+        max_analog_channels = self.analog_channels()
         analog_channels = config.analog_channels
-        if len(analog_channels) < self._CHANNEL_COUNT_ANALOG:
-            analog_channels += [DAQDisabledChannel() for _ in range(self._CHANNEL_COUNT_ANALOG - len(analog_channels))]
-        elif len(analog_channels) > self._CHANNEL_COUNT_ANALOG:
-            raise ValueError('Too many analog channels')
+        if len(analog_channels) < max_analog_channels:
+            analog_channels += [DAQDisabledChannel() for _ in range(max_analog_channels - len(analog_channels))]
+        elif len(analog_channels) > max_analog_channels:
+            raise ConfigError('Too many analog channels')
 
+        max_computed_channels = self.computed_channels()
         computed_channels = config.computed_channels
-        if len(computed_channels) < self._CHANNEL_COUNT_COMPUTED:
-            computed_channels += [DAQDisabledChannel() for _ in range(self._CHANNEL_COUNT_COMPUTED - len(computed_channels))]
-        elif len(computed_channels) > self._CHANNEL_COUNT_COMPUTED:
-            raise ValueError('Too many computed channels')
+        if len(computed_channels) < max_computed_channels:
+            computed_channels += [DAQDisabledChannel() for _ in range(max_computed_channels - len(computed_channels))]
+        elif len(computed_channels) > max_computed_channels:
+            raise ConfigError('Too many computed channels')
 
         aux_buffer = b''
         for chan in analog_channels:
@@ -230,7 +236,7 @@ class NetDAQ:
 
         length_left = CHANNEL_PAYLOAD_LENGTH - len(payload)
         if length_left < 0:
-            raise ValueError('Payload too large (too many equations?)')
+            raise ConfigError('Payload too large (too many equations?)')
         elif length_left > 0:
             payload += (b'\x00' * length_left)
 

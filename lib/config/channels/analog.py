@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from ..enums import DAQAnalogMeasuremenType, DAQOhmsRange, DAQVDCRange, DAQVACRange, DAQCurrentRange, DAQThermocoupleRange, DAQRTDRange
 from ...utils.encoding import make_int, make_float, NULL_INT
+from ..base import ConfigError
 from .base import DAQAnalogChannel
 from typing import override
 
@@ -11,7 +12,7 @@ class DAQAnalogOhmsChannel(DAQAnalogChannel):
 
     def __post_init__(self) -> None:
         if (not self.four_wire) and (self.range == DAQOhmsRange.Ohms_300 or self.range == DAQOhmsRange.Ohms_3k):
-            raise ValueError("2-wire ohms measurement is not supported for 300 or 3k Ohms range")
+            raise ConfigError("2-wire ohms measurement is not supported for 300 or 3k Ohms range")
 
     @override
     def encode(self) -> bytes:
@@ -71,14 +72,14 @@ class DAQAnalogRTDChannel(DAQAnalogChannel):
 
     def __post_init__(self) -> None:
         if self.r0 < 10 or self.r0 > 1010:
-            raise ValueError("Custom RTD R0 value must be between 10 and 1010 Ohms")
+            raise ConfigError("Custom RTD R0 value must be between 10 and 1010 Ohms")
 
         if self.range == DAQRTDRange.RTD_FIXED_385:
             if self.alpha != 0.0:
-                raise ValueError("Fixed RTD does not allow for Alpha value to be set")
+                raise ConfigError("Fixed RTD does not allow for Alpha value to be set")
         elif self.range == DAQRTDRange.RTD_CUSTOM_385:
             if self.alpha < 0.00374 or self.alpha > 0.00393:
-                raise ValueError("Custom RTD Alpha value must be between 0.00374 and 0.00393")
+                raise ConfigError("Custom RTD Alpha value must be between 0.00374 and 0.00393")
 
     @override
     def encode(self) -> bytes:
@@ -114,7 +115,7 @@ class DAQAnalogCurrentChannel(DAQAnalogChannel):
 
     def __post_init__(self) -> None:
         if self.shunt_resistance < 10 or self.shunt_resistance > 250:
-            raise ValueError("Shunt resistance must be between 10 and 250 Ohms")
+            raise ConfigError("Shunt resistance must be between 10 and 250 Ohms")
 
     @override
     def _modified_mxab_multiplier(self) -> float:
