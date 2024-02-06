@@ -10,7 +10,7 @@ from asyncio import run, sleep
 
 async def main2():
     eq = DAQEquation()
-    print(eq.push_channel(1).push_float(10.0).add().end().encode())
+    print(eq.push_channel(1).push_float(1).add().end().encode())
 
 async def main():
     instrument = NetDAQ(ip=argv[1], port=4369)
@@ -57,4 +57,4 @@ async def main():
         await instrument.close()
         print("Done!")
 
-run(main())
+run(main2())

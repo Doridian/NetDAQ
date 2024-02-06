@@ -110,12 +110,16 @@ class DAQEquation:
         return self
 
     def push_channel(self, channel: int) -> "DAQEquation":
-        self._push_op(DAQEquationOperation(DAQEquationOpcode.PUSH_CHANNEL, [int(channel)]))
+        if isinstance(channel, float):
+            channel = int(channel)
+        self._push_op(DAQEquationOperation(DAQEquationOpcode.PUSH_CHANNEL, [channel]))
         self._has_channel = True
         return self
 
     def push_float(self, value: float) -> "DAQEquation":
-        self._push_op(DAQEquationOperation(DAQEquationOpcode.PUSH_FLOAT, [float(value)]))
+        if isinstance(value, int):
+            value = float(value)
+        self._push_op(DAQEquationOperation(DAQEquationOpcode.PUSH_FLOAT, [value]))
         return self
 
     def unary_minus(self) -> "DAQEquation":
