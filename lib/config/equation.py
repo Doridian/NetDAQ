@@ -52,7 +52,7 @@ class DAQEquationOperation:
         expected_types = self._opcode.value.args
 
         payload = bytes([self._opcode.value.code])
-        for _, (expected_type, arg) in enumerate(zip(expected_types, self._params)):
+        for expected_type, arg in zip(expected_types, self._params):
             if expected_type == int:
                 payload += make_int(cast(int, arg))
             elif expected_type == float:
