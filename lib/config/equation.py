@@ -12,7 +12,7 @@ class DAQEquationOpcodeConfig:
     pushes: int
 
 class DAQEquationOpcode(Enum):
-    EXIT         = DAQEquationOpcodeConfig(0x00, [], 1, 0)
+    END          = DAQEquationOpcodeConfig(0x00, [], 1, 0)
     PUSH_CHANNEL = DAQEquationOpcodeConfig(0x01, [int], 0, 1)
     PUSH_FLOAT   = DAQEquationOpcodeConfig(0x02, [float], 0, 1)
     UNARY_MINUS  = DAQEquationOpcodeConfig(0x04, [], 1, 1)
@@ -105,7 +105,7 @@ class DAQEquation:
     def end(self) -> "DAQEquation":
         if self._stack_depth != 1:
             raise ConfigError(f"Invalid stack depth at end of equation (expected 1, got {self._stack_depth})")
-        self._push_op(DAQEquationOperation(DAQEquationOpcode.EXIT, []))
+        self._push_op(DAQEquationOperation(DAQEquationOpcode.END, []))
         self._has_end = True
         return self
 
