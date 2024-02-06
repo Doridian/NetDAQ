@@ -52,16 +52,11 @@ class DAQEquationOperation:
         expected_types = self._opcode.value.args
 
         payload = bytes([self._opcode.value.code])
-        for i, (expected_type, arg) in enumerate(zip(expected_types, self._params)):
-            if not isinstance(arg, expected_type):
-                raise ConfigError(f"UNREACHABLE: Late invalid type for argument {i} of opcode {self._opcode.name} (expected {expected_type}, got {type(arg)})")
-
+        for _, (expected_type, arg) in enumerate(zip(expected_types, self._params)):
             if expected_type == int:
                 payload += make_int(cast(int, arg))
             elif expected_type == float:
                 payload += make_float(cast(float, arg))
-            else:
-                raise ConfigError(f"UNREACHABLE: Invalid instruction parameter type {expected_type} for opcode {self._opcode.name}")
 
         return payload
 
