@@ -71,7 +71,7 @@ class DAQAnalogRTDChannel(DAQAnalogChannel):
     r0: float
 
     def __post_init__(self) -> None:
-        if self.r0 < 10 or self.r0 > 1010:
+        if self.r0 < 10.0 or self.r0 > 1010.0:
             raise ConfigError("Custom RTD R0 value must be between 10 and 1010 Ohms")
 
         if self.range == DAQRTDRange.RTD_FIXED_385:
@@ -114,7 +114,7 @@ class DAQAnalogCurrentChannel(DAQAnalogChannel):
     shunt_resistance: float
 
     def __post_init__(self) -> None:
-        if self.shunt_resistance < 10 or self.shunt_resistance > 250:
+        if self.shunt_resistance < 10.0 or self.shunt_resistance > 250.0:
             raise ConfigError("Shunt resistance must be between 10 and 250 Ohms")
 
     @override
