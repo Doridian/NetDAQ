@@ -124,7 +124,7 @@ class NetDAQ:
         self._sock_writer = writer
         self._reader_coroutine = get_event_loop().create_task(self._reader_coroutine_func(sock_reader=reader))
 
-    async def send_rpc(self, command: DAQCommand, payload: bytes = b'', writer: StreamWriter | None = None, wait_response: bool = True) -> bytes:
+    async def send_rpc(self, command: DAQCommand, *, payload: bytes = b'', writer: StreamWriter | None = None, wait_response: bool = True) -> bytes:
         if not writer:
             writer = self._sock_writer
         if not writer:
@@ -189,7 +189,7 @@ class NetDAQ:
 
         packet = make_time(time) + make_int(int(time.microsecond / 1000))
 
-        _ = await self.send_rpc(DAQCommand.SET_TIME, packet)
+        _ = await self.send_rpc(DAQCommand.SET_TIME, payload=packet)
         await self.wait_for_idle()
 
     async def set_config(self, config: DAQConfiguration) -> None:
@@ -240,17 +240,17 @@ class NetDAQ:
         elif length_left > 0:
             payload += (b'\x00' * length_left)
 
-        _ = await self.send_rpc(DAQCommand.SET_CONFIG, payload)
+        _ = await self.send_rpc(DAQCommand.SET_CONFIG, payload=payload)
         await self.wait_for_idle()
 
     async def set_monitor_channel(self, channel: int) -> None:
         if channel <= 0:
             _ = await self.send_rpc(DAQCommand.CLEAR_MONITOR_CHANNEL)
         else:
-            _ = await self.send_rpc(DAQCommand.SET_MONITOR_CHANNEL, make_int(channel))
+            _ = await self.send_rpc(DAQCommand.SET_MONITOR_CHANNEL, payload=make_int(channel))
 
     async def get_readings(self, max_readings: int = 0xFF) -> DAQReadingResult:
-        data = await self.send_rpc(DAQCommand.GET_READINGS, make_int(max_readings))
+        data = await self.send_rpc(DAQCommand.GET_READINGS, payload=make_int(max_readings))
         result: list[DAQReading] = []
 
         chunk_length = parse_int(data[0:])
@@ -278,7 +278,7 @@ class NetDAQ:
         _ = await self.send_rpc(DAQCommand.DISABLE_SPY)
 
     async def query_spy(self, channel: int) -> float:
-        return parse_float(await self.send_rpc(DAQCommand.QUERY_SPY, make_int(channel)))
+        return parse_float(await self.send_rpc(DAQCommand.QUERY_SPY, payload=make_int(channel)))
 
     async def stop(self) -> None:
         try:
@@ -287,7 +287,8 @@ class NetDAQ:
             pass
 
     async def start(self) -> None:
-        _ = await self.send_rpc(DAQCommand.START, b'\x00' * 16)
+        start_payload = b'\x00' * 16
+        _ = await self.send_rpc(DAQCommand.START, payload=start_payload)
 
     async def handshake(self) -> None:
         await self.ping()
