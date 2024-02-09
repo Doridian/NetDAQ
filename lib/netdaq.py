@@ -42,17 +42,19 @@ class DAQReadingResult:
     instrument_queue: int
 
 class NetDAQ:
-    ip: str
-    port: int
+    _ip: str
+    _port: int
+
+    _sequence_id: int
     _sock_writer: StreamWriter | None = None
     _reader_coroutine: Task[None] | None = None
     _response_futures: dict[int, Future[bytes]]
 
     def __init__(self, ip: str, port: int) -> None:
         super().__init__()
-        self.ip = ip
-        self.port = port
-        self.sequence_id = 0x02
+        self._ip = ip
+        self._port = port
+        self._sequence_id = 0x02
 
         self._sock_writer = None
         self._response_futures = {}
@@ -120,7 +122,7 @@ class NetDAQ:
     async def connect(self) -> None:
         await self.close()
 
-        reader, writer = await open_connection(self.ip, self.port)
+        reader, writer = await open_connection(self._ip, self._port)
         self._sock_writer = writer
         self._reader_coroutine = get_event_loop().create_task(self._reader_coroutine_func(sock_reader=reader))
 
@@ -130,8 +132,10 @@ class NetDAQ:
         if not writer:
             raise Exception('Not connected')
 
-        sequence_id = self.sequence_id
-        self.sequence_id += 1
+        sequence_id = self._sequence_id
+        self._sequence_id += 1
+        if self._sequence_id > 0xFFFFFFFF:
+            self._sequence_id = 0x00
 
         packet = FIXED_HEADER + \
                     make_int(sequence_id) + \
