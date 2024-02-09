@@ -287,7 +287,7 @@ class NetDAQ:
             pass
 
     async def start(self) -> None:
-        start_payload = b'\x00' * 16
+        start_payload = NULL_INT * 4
         _ = await self.send_rpc(DAQCommand.START, payload=start_payload)
 
     async def handshake(self) -> None:
