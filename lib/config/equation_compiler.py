@@ -4,7 +4,6 @@ from math import exp, log, log10, sqrt
 from typing import override
 
 from .equation import DAQEquation
-from .base import ConfigError
 
 @dataclass(frozen=True, kw_only=True)
 class DAQEquationTokenTypeDC:
@@ -13,14 +12,16 @@ class DAQEquationTokenTypeDC:
 
 class DAQEquationTokenType(Enum):
     UNKNOWN = DAQEquationTokenTypeDC(id=0, prev=[])
-    CHANNEL = DAQEquationTokenTypeDC(id=1, prev=[0, 2, 5, 8])
+    CHANNEL = DAQEquationTokenTypeDC(id=1, prev=[0, 2, 5, 7, 100])
     OPERATOR = DAQEquationTokenTypeDC(id=2, prev=[1, 4, 6])
-    FUNCTION = DAQEquationTokenTypeDC(id=3, prev=[0, 2, 5, 8])
-    FLOAT = DAQEquationTokenTypeDC(id=4, prev=[0, 2, 5, 8])
-    OPENING_BRACKET = DAQEquationTokenTypeDC(id=5, prev=[0, 2, 3, 5, 8])
+    FUNCTION = DAQEquationTokenTypeDC(id=3, prev=[0, 2, 5, 7, 100])
+    FLOAT = DAQEquationTokenTypeDC(id=4, prev=[0, 2, 5, 7, 100])
+    OPENING_BRACKET = DAQEquationTokenTypeDC(id=5, prev=[0, 2, 3, 5, 7, 100])
     CLOSING_BRACKET = DAQEquationTokenTypeDC(id=6, prev=[1, 4, 6])
-    END = DAQEquationTokenTypeDC(id=7, prev=[1, 4, 6])
-    UNARY_OPERATOR = DAQEquationTokenTypeDC(id=8, prev=[0, 1, 2, 4, 6, 8])
+    UNARY_OPERATOR = DAQEquationTokenTypeDC(id=7, prev=[0, 1, 2, 4, 6, 7, 100])
+
+    BEGIN = DAQEquationTokenTypeDC(id=100, prev=[])
+    END = DAQEquationTokenTypeDC(id=101, prev=[1, 4, 6])
 
 UNARY_OPERATORS = ["+", "-"]
 OPERATORS = ["*", "^", "**", "/"]
@@ -49,37 +50,37 @@ class DAQEquationToken:
 
     def validate(self) -> None:
         if self.token_type == DAQEquationTokenType.UNKNOWN:
-            raise ConfigError(f"Unknown token type for token {self}")
+            raise DAQTokenError("Unknown token type for token", self)
         elif self.token_type == DAQEquationTokenType.CHANNEL:
             channel_token = self.token
             if channel_token[0] == "-":
                 channel_token = channel_token[1:]
 
             if channel_token[0] != "c":
-                raise ConfigError(f"Invalid channel token (does not begin with c) {self}")
+                raise DAQTokenError("Invalid channel token (does not begin with c)", self)
             try:
                 n = int(channel_token[1:])
                 if n <= 0:
-                    raise ConfigError(f"Invalid channel token (channel number must be greater than 0) {self}")
+                    raise DAQTokenError("Invalid channel token (channel number must be greater than 0)", self)
             except ValueError:
-                raise ConfigError(f"Invalid channel token {self}")
+                raise DAQTokenError("Invalid channel token", self)
         elif self.token_type == DAQEquationTokenType.FLOAT:
             try:
                 _ = float(self.token)
             except ValueError:
-                raise ConfigError(f"Invalid float token {self}")
+                raise DAQTokenError("Invalid float token", self)
         elif self.token_type == DAQEquationTokenType.OPERATOR:    
             if self.token not in OPERATORS:
-                raise ConfigError(f"Invalid operator token {self}")
+                raise DAQTokenError("Invalid operator token", self)
         elif self.token_type == DAQEquationTokenType.UNARY_OPERATOR:    
             if self.token not in UNARY_OPERATORS:
-                raise ConfigError(f"Invalid maybe-unary operator token {self}")
+                raise DAQTokenError("Invalid maybe-unary operator token", self)
         elif self.token_type == DAQEquationTokenType.FUNCTION:
             func_token = self.token
             if func_token[0] == "-":
                 func_token = func_token[1:]
             if func_token not in FUNCTIONS:
-                raise ConfigError(f"Invalid function token {self}")
+                raise DAQTokenError("Invalid function token", self)
 
 @dataclass
 class DAQEquationTokenTreeNode:
@@ -91,6 +92,43 @@ class DAQEquationTokenTreeNode:
             print(f"{indent}{self.value.token}")
         for node in self.nodes:
             node.print_tree(indent + '  ')
+
+class ParseError(Exception):
+    pass
+
+class DAQTreeError(ParseError):
+    token_tree: DAQEquationTokenTreeNode
+    raw_msg: str
+
+    def __init__(self, msg: str, token_tree: DAQEquationTokenTreeNode) -> None:
+        super().__init__(f"{msg} {token_tree}")
+        self.token_tree = token_tree
+        self.raw_msg = msg
+
+class DAQTokenError(ParseError):
+    token: DAQEquationToken
+    raw_msg: str
+
+    def __init__(self, msg: str, token: DAQEquationToken) -> None:
+        super().__init__(f"{msg} {token}")
+        self.token = token
+        self.raw_msg = msg
+
+class DAQMultiTokenError(ParseError):
+    tokens: list[DAQEquationToken]
+    raw_msg: str
+
+    def __init__(self, msg: str, tokens: list[DAQEquationToken]) -> None:
+        super().__init__(f"{msg} {tokens}")
+        self.tokens = tokens
+        self.raw_msg = msg
+
+class DAQMissingTokenError(ParseError):
+    raw_msg: str
+
+    def __init__(self, msg: str) -> None:
+        super().__init__(f"{msg} (missing token)")
+        self.raw_msg = msg
 
 class DAQEQuationCompiler:
     def __init__(self) -> None:
@@ -136,7 +174,7 @@ class DAQEQuationCompiler:
             elif token.token == "^" or token.token == "**":
                 _ = eq.power()
             else:
-                raise ValueError(f"Unhandled operator token for emit {token}")
+                raise DAQTokenError("Unhandled operator token for emit", token)
 
         elif token.token_type == DAQEquationTokenType.FUNCTION:
             func_token = token.token
@@ -157,7 +195,7 @@ class DAQEQuationCompiler:
             elif func_token == "sqrt":
                 _ = eq.sqrt()
             else:
-                raise ValueError(f"Unhandled function token for emit {token}")
+                raise DAQTokenError("Unhandled function token for emit", token)
 
             if do_negate:
                 _ = eq.unary_minus()
@@ -167,12 +205,12 @@ class DAQEQuationCompiler:
             self._emit_tree(token_tree.nodes[0], eq)
         elif len(token_tree.nodes) == 2:
             if token_tree.nodes[0].value is None:
-                raise ValueError(f"Invalid token tree (missing unary operator node value) {token_tree}")
+                raise DAQTreeError("Invalid token tree (missing unary operator node value)", token_tree)
             self._emit_tree(token_tree.nodes[1], eq)
             self._emit_token(token_tree.nodes[0].value, eq)
         elif len(token_tree.nodes) == 3:
             if token_tree.nodes[1].value is None:
-                raise ValueError(f"Invalid token tree (missing binary operator node value) {token_tree}")
+                raise DAQTreeError(f"Invalid token tree (missing binary operator node value)", token_tree)
             self._emit_tree(token_tree.nodes[0], eq)
             self._emit_tree(token_tree.nodes[2], eq)
             self._emit_token(token_tree.nodes[1].value, eq)
@@ -202,7 +240,7 @@ class DAQEQuationCompiler:
                 return
 
             if (not token_tree.value) or token_tree.value.token_type != DAQEquationTokenType.FUNCTION:
-                raise ValueError(f"Invalid constant expression {token_tree.value}")
+                raise DAQTokenError("Invalid constant expression", token_tree.value)
 
             func_token = token_tree.value.token
             do_negate = func_token[0] == "-"
@@ -223,7 +261,7 @@ class DAQEQuationCompiler:
             elif func_token == "sqrt":
                 token_value = sqrt(token_value)
             else:
-                raise ValueError(f"Unhandled function token for constant expression {token_tree.value}")
+                raise DAQTokenError("Unhandled function token for constant expression", token_tree.value)
 
             if do_negate:
                 token_value = -token_value
@@ -242,8 +280,10 @@ class DAQEQuationCompiler:
             new_float_value = 0.0
             op = token_tree.nodes[1].value
 
-            if (not op) or (op.token_type != DAQEquationTokenType.OPERATOR and op.token_type != DAQEquationTokenType.UNARY_OPERATOR):
-                raise ValueError(f"Invalid operator token for constant expression {op}")
+            if not op:
+                raise DAQMissingTokenError("Operator token for constant expression")
+            if op.token_type != DAQEquationTokenType.OPERATOR and op.token_type != DAQEquationTokenType.UNARY_OPERATOR:
+                raise DAQTokenError("Invalid operator token for constant expression", op)
 
             if op.token == "+":
                 new_float_value = value_left + value_right
@@ -256,7 +296,7 @@ class DAQEQuationCompiler:
             elif op.token == "^" or op.token == "**":
                 new_float_value = value_left ** value_right
             else:
-                raise ValueError(f"Unhandled operator token for constant expression {op}")
+                raise DAQTokenError("Unhandled operator token for constant expression", op)
 
             token_tree.value = DAQEquationToken(token=str(new_float_value), token_type=DAQEquationTokenType.FLOAT, begin=node_left.value.begin, end=node_right.value.end, begins_with_whitespace=False)
             token_tree.nodes = []  
@@ -295,7 +335,7 @@ class DAQEQuationCompiler:
             best_operator_precedence = this_operator_precedence
 
         if best_operator is None:
-            raise ValueError(f"Invalid token tree (no operators found) {token_tree}")
+            raise DAQTreeError(f"Invalid token tree (no operators found)", token_tree)
 
         new_tree_left = DAQEquationTokenTreeNode(nodes=token_tree.nodes[:best_operator])
         new_tree_op = DAQEquationTokenTreeNode(value=token_tree.nodes[best_operator].value)
@@ -318,7 +358,7 @@ class DAQEQuationCompiler:
             if token.token_type == DAQEquationTokenType.FUNCTION:
                 token_must_be_bracket = tokens.pop(0)
                 if (not token_must_be_bracket) or token_must_be_bracket.token_type != DAQEquationTokenType.OPENING_BRACKET:
-                    raise ConfigError(f"Invalid expression (function {token} must be followed by an opening bracket)")
+                    raise DAQMultiTokenError("Invalid expression (function must be followed by an opening bracket)", tokens=[token, token_must_be_bracket])
                 token_tree.nodes.append(self.build_token_tree(tokens, value=token))
                 continue
             if token.token_type == DAQEquationTokenType.OPENING_BRACKET:
@@ -329,7 +369,7 @@ class DAQEQuationCompiler:
             token_tree.nodes.append(DAQEquationTokenTreeNode(value=token))
 
         if len(token_tree.nodes) == 0:
-            raise ConfigError(f"Invalid expression (empty bracket)")
+            raise DAQTreeError("Invalid expression (empty tree)", token_tree)
         # Just return single child node if this is a bare bracket (no function)
         elif len(token_tree.nodes) == 1 and token_tree.value is None:
             return token_tree.nodes[0]
@@ -337,28 +377,37 @@ class DAQEQuationCompiler:
         return token_tree
 
     def validate_token_order(self, tokens: list[DAQEquationToken]) -> None:
+        if not tokens:
+            return
+
+        last_tokens = tokens[-1]
+        tokens = [
+            DAQEquationToken(token="", token_type=DAQEquationTokenType.BEGIN, begin=0, end=0, begins_with_whitespace=False)
+        ] + tokens + [
+            DAQEquationToken(token="", token_type=DAQEquationTokenType.END, begin=last_tokens.end, end=last_tokens.end, begins_with_whitespace=False)
+        ]
+
         bracket_counter: int = 0
 
         for i, token in enumerate(tokens):
+            if i == 0:
+                if token.token_type != DAQEquationTokenType.BEGIN:
+                    raise DAQTokenError("Invalid expression (BEGIN token not at the start)", token)
+                continue
+
             if token.token_type == DAQEquationTokenType.OPENING_BRACKET:
                 bracket_counter += 1
             elif token.token_type == DAQEquationTokenType.CLOSING_BRACKET:
                 bracket_counter -= 1
                 if bracket_counter < 0:
-                    raise ConfigError(f"Invalid expression (closing bracket without opening bracket) {token}")
+                    raise DAQTokenError("Invalid expression (closing bracket without opening bracket)", token)
 
-            prev_token = tokens[i-1] if i > 0 else None
-            prev_token_id = prev_token.token_type.value.id if prev_token else 0
-            if prev_token_id not in token.token_type.value.prev:
-                raise ConfigError(f"Invalid token order (token {token} cannot follow token {prev_token.token if prev_token else "BEGIN"})")
-
-        if len(tokens) > 0:
-            last_token = tokens[-1]
-            if last_token.token_type.value.id not in DAQEquationTokenType.END.value.prev:
-                raise ConfigError(f"Invalid token order (token {last_token} cannot be the last token in the expression)")
+            prev_token = tokens[i-1]
+            if prev_token.token_type.value.id not in token.token_type.value.prev:
+                raise DAQMultiTokenError(f"Invalid token order (token cannot follow token)", tokens=[prev_token,token])
 
         if bracket_counter != 0:
-            raise ConfigError(f"Invalid expression (unclosed brackets)")
+            raise DAQMultiTokenError(f"Invalid expression (unclosed brackets)", tokens=tokens)
 
     def integrate_unary_minusplus(self, tokens: list[DAQEquationToken]) -> list[DAQEquationToken]:
         new_tokens: list[DAQEquationToken] = []
@@ -375,14 +424,7 @@ class DAQEQuationCompiler:
                     first_unary_token = i
                     continue
                 if token.begins_with_whitespace:
-                    error_token = DAQEquationToken(
-                        token="".join(map(lambda x : f" {x.token}" if x.begins_with_whitespace else x.token, tokens[first_unary_token:i+1])),
-                        token_type=DAQEquationTokenType.UNARY_OPERATOR,
-                        begin=tokens[first_unary_token].begin,
-                        end=token.end,
-                        begins_with_whitespace=tokens[first_unary_token].begins_with_whitespace
-                    )
-                    raise ConfigError(f"Invalid expression (unary operator chain {error_token} cannot have whitespace inside of it)")
+                    raise DAQMultiTokenError(f"Invalid expression (unary operator chain cannot have whitespace inside of it)", tokens=tokens[first_unary_token:i+1])
                 continue
 
             # Unary operators cannot have spaces between the token and operator
