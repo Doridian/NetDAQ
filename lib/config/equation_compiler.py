@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 
 from .equation import DAQEquation
@@ -17,6 +17,7 @@ class DAWEquationTokenType(Enum):
     FLOAT = DAQEquationTokenTypeDC(id=4, prev=[0, 2, 5])
     OPENING_BRACKET = DAQEquationTokenTypeDC(id=5, prev=[0, 2, 3, 5])
     CLOSING_BRACKET = DAQEquationTokenTypeDC(id=6, prev=[1, 4, 6])
+    END = DAQEquationTokenTypeDC(id=7, prev=[1, 4, 6])
 
 UNARY_OPERATORS = ["+", "-"]
 OPERATORS = ["+", "-", "*", "^", "**", "/"]
@@ -54,6 +55,16 @@ class DAQEquationToken:
             if self.token not in FUNCTIONS:
                 raise ConfigError(f"Invalid function token {self.token}")
 
+@dataclass
+class DAQEquationTokenTreeNode:
+    nodes: list["DAQEquationTokenTreeNode"] = field(default_factory=lambda: [])
+    value: DAQEquationToken | None = None
+
+    def print_tree(self, indent: str = '') -> None:
+        print(f"{indent}{self.value.token if self.value else ''}")
+        for node in self.nodes:
+            node.print_tree(indent + '  ')
+
 class DAQEQuationCompiler:
     def __init__(self) -> None:
         super().__init__()
@@ -62,7 +73,34 @@ class DAQEQuationCompiler:
         tokens = self.tokenize(src)
         tokens = self.integrate_unary_minusplus(tokens)
         self.validate_token_order(tokens)
-        print(tokens)
+        token_tree = self.build_token_tree(tokens.copy())
+        token_tree.print_tree()
+
+    def build_token_tree(self, tokens: list[DAQEquationToken], *, value: DAQEquationToken | None = None) -> DAQEquationTokenTreeNode:
+        token_tree = DAQEquationTokenTreeNode(value=value)
+    
+        while tokens:
+            token = tokens.pop(0)
+            if token.token_type == DAWEquationTokenType.FUNCTION:
+                token_must_be_bracket = tokens.pop(0)
+                if (not token_must_be_bracket) or token_must_be_bracket.token_type != DAWEquationTokenType.OPENING_BRACKET:
+                    raise ConfigError(f"Invalid expression (function {token.token} must be followed by an opening bracket)")
+                token_tree.nodes.append(self.build_token_tree(tokens, value=token))
+                continue
+            if token.token_type == DAWEquationTokenType.OPENING_BRACKET:
+                token_tree.nodes.append(self.build_token_tree(tokens))
+                continue
+            elif token.token_type == DAWEquationTokenType.CLOSING_BRACKET:
+                break
+            token_tree.nodes.append(DAQEquationTokenTreeNode(value=token))
+
+        if len(token_tree.nodes) == 0:
+            raise ConfigError(f"Invalid expression (empty bracket)")
+        # Just return single child node if this is a bare bracket (no function)
+        elif len(token_tree.nodes) == 1 and token_tree.value is None:
+            return token_tree.nodes[0]
+
+        return token_tree
 
     def validate_token_order(self, tokens: list[DAQEquationToken]) -> None:
         bracket_counter: int = 0
@@ -77,8 +115,13 @@ class DAQEQuationCompiler:
 
             prev_token = tokens[i-1] if i > 0 else None
             prev_token_id = prev_token.token_type.value.id if prev_token else 0
-            if not prev_token_id in token.token_type.value.prev:
+            if prev_token_id not in token.token_type.value.prev:
                 raise ConfigError(f"Invalid token order (token {token.token} cannot follow token {prev_token.token if prev_token else "BEGIN"})")
+
+        if len(tokens) > 0:
+            last_token = tokens[-1]
+            if last_token.token_type.value.id not in DAWEquationTokenType.END.value.prev:
+                raise ConfigError(f"Invalid token order (token {last_token.token} cannot be the last token in the expression)")
 
         if bracket_counter != 0:
             raise ConfigError(f"Invalid expression (unclosed brackets)")

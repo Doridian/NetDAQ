@@ -11,7 +11,7 @@ from asyncio import run, sleep
 
 async def main3():
     eqc = DAQEQuationCompiler()
-    print(eqc.compile("1 + 2 * -35.3 ** 4 / ((C7))"))
+    print(eqc.compile("1 + 2 * -35.3 ** 4 / ln((C7))"))
 
 async def main2():
     eq = DAQEquation()
