@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from enum import Enum
-from math import exp, log, log10, sqrt
+from math import exp, log, log10, sqrt, fabs, trunc
 from typing import override
 
 from .equation import DAQEquation
@@ -25,7 +25,7 @@ class DAQEquationTokenType(Enum):
 
 UNARY_OPERATORS = ["+", "-"]
 OPERATORS = ["*", "^", "**", "/"]
-FUNCTIONS = ["exp", "ln", "log", "abs", "int", "sqrt"]
+FUNCTIONS = ["exp", "ln", "log", "abs", "int", "sqrt"] # log = math.log10, ln = math.log
 DIGITS = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "."]
 
 OPTERATOR_PRECEDENCE = { # Keep these 1000 apart, we nudge them for optimization reasons
@@ -256,9 +256,9 @@ class DAQEQuationCompiler:
             elif func_token == "log":
                 token_value = log10(token_value)
             elif func_token == "abs":
-                token_value = abs(token_value)
+                token_value = fabs(token_value)
             elif func_token == "int":
-                token_value = float(int(token_value))
+                token_value = float(trunc(token_value))
             elif func_token == "sqrt":
                 token_value = sqrt(token_value)
             else:
