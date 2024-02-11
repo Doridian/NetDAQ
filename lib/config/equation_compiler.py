@@ -23,6 +23,15 @@ UNARY_OPERATORS = ["+", "-"]
 OPERATORS = ["+", "-", "*", "^", "**", "/"]
 FUNCTIONS = ["exp", "ln", "log", "abs", "int", "sqrt"]
 
+OPTERATOR_PRECEDENCE = {
+    "+": 1,
+    "-": 1,
+    "*": 2,
+    "/": 2,
+    "^": 3,
+    "**": 3,
+}
+
 @dataclass(frozen=True, kw_only=True)
 class DAQEquationToken:
     token: str
@@ -61,7 +70,8 @@ class DAQEquationTokenTreeNode:
     value: DAQEquationToken | None = None
 
     def print_tree(self, indent: str = '') -> None:
-        print(f"{indent}{self.value.token if self.value else ''}")
+        if self.value:
+            print(f"{indent}{self.value.token}")
         for node in self.nodes:
             node.print_tree(indent + '  ')
 
@@ -74,7 +84,49 @@ class DAQEQuationCompiler:
         tokens = self.integrate_unary_minusplus(tokens)
         self.validate_token_order(tokens)
         token_tree = self.build_token_tree(tokens.copy())
+        self.simplify_token_tree(token_tree)
         token_tree.print_tree()
+
+    # Turn tree into only subtrees of the form "X" or "X", <OP>, "Y"
+    def simplify_token_tree(self, token_tree: DAQEquationTokenTreeNode) -> None:
+        for node in token_tree.nodes:
+            self.simplify_token_tree(node)
+
+        if len(token_tree.nodes) == 1 and not token_tree.value:
+            token_tree.value = token_tree.nodes[0].value
+            token_tree.nodes = token_tree.nodes[0].nodes
+            return
+
+        # 1-3 node subtrees cannot be simplified
+        if len(token_tree.nodes) < 4:
+            return
+
+        # We must now be in a leaf node of the form "X", <OP>, "Y", <OP>, "Z", ...
+        best_operator: int | None = None
+        best_operator_precedence: int = 0
+        for i, sub_node in enumerate(token_tree.nodes):
+            if not sub_node.value or sub_node.value.token_type != DAWEquationTokenType.OPERATOR:
+                continue
+            this_operator_precedence = OPTERATOR_PRECEDENCE[sub_node.value.token]
+            if this_operator_precedence <= best_operator_precedence:
+                continue
+            best_operator = i
+            best_operator_precedence = this_operator_precedence
+
+        assert best_operator is not None
+
+        new_tree_left = DAQEquationTokenTreeNode(nodes=token_tree.nodes[:best_operator])
+        new_tree_op = DAQEquationTokenTreeNode(value=token_tree.nodes[best_operator].value)
+        new_tree_right = DAQEquationTokenTreeNode(nodes=token_tree.nodes[best_operator+1:])
+
+        self.simplify_token_tree(new_tree_left)
+        self.simplify_token_tree(new_tree_right)
+
+        token_tree.nodes = [
+            new_tree_left,
+            new_tree_op,
+            new_tree_right,
+        ]
 
     def build_token_tree(self, tokens: list[DAQEquationToken], *, value: DAQEquationToken | None = None) -> DAQEquationTokenTreeNode:
         token_tree = DAQEquationTokenTreeNode(value=value)
@@ -199,6 +251,7 @@ class DAQEQuationCompiler:
                 current_token_type = DAWEquationTokenType.OPERATOR
                 current_token_str += c
                 if current_token_str == "**":
+                    current_token_str = "^" # Push ** as ^
                     push_current_token(pos=i)
             elif c in OPERATORS:
                 push_current_token(push_also=c, token_type=DAWEquationTokenType.OPERATOR, pos=i)
