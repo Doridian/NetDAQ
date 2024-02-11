@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Any, cast
+from typing import Any, cast, override
 from .base import ConfigError
 from ..utils.encoding import make_int, make_float
 from dataclasses import dataclass
@@ -62,6 +62,10 @@ class DAQEquationOperation:
 
     def get_opcode(self) -> DAQEquationOpcode:
         return self._opcode
+    
+    @override
+    def __repr__(self) -> str:
+        return f"{self._opcode.name} {",".join(map(str, self._params))}"
 
 class DAQEquation:
     _ops: list[DAQEquationOperation]
@@ -72,6 +76,10 @@ class DAQEquation:
     def __init__(self) -> None:
         super().__init__()
         self._ops = []
+
+    @override
+    def __repr__(self) -> str:
+        return f"# Begin program\n{'\n'.join(map(str, self._ops))}\n# End program"
 
     def _push_op(self, op: DAQEquationOperation) -> None:
         if self._has_end:
