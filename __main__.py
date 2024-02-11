@@ -5,8 +5,13 @@ from lib.config.instrument import DAQConfiguration, DAQConfigTrigger
 from lib.config.enums import *
 from lib.config.channels.analog import *
 from lib.config.equation import DAQEquation
+from lib.config.equation_compiler import DAQEQuationCompiler
 from sys import argv
 from asyncio import run, sleep
+
+async def main3():
+    eqc = DAQEQuationCompiler()
+    print(eqc.compile("1 + 2 * -35.3 ** 4 / C7"))
 
 async def main2():
     eq = DAQEquation()
@@ -57,4 +62,4 @@ async def main():
         await instrument.close()
         print("Done!")
 
-run(main2())
+run(main3())
