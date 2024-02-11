@@ -23,6 +23,7 @@ class DAQEquationToken:
     token_type: DAWEquationTokenType
     begin: int
     end: int
+    begins_with_whitespace: bool
 
     def validate(self) -> None:
         if self.token_type == DAWEquationTokenType.UNKNOWN:
@@ -56,13 +57,18 @@ class DAQEQuationCompiler:
         super().__init__()
 
     def compile(self, src: str) -> DAQEquation | None:
-        pass
+        tokens = self.tokenize(src)
+        tokens = self.integrate_unary_minusplus(tokens)
+        print(tokens)
 
     def integrate_unary_minusplus(self, tokens: list[DAQEquationToken]) -> list[DAQEquationToken]:
         new_tokens: list[DAQEquationToken] = []
         for i, token in enumerate(tokens):
             new_tokens.append(token)
             if token.token_type != DAWEquationTokenType.FLOAT:
+                continue
+            # Unary operators cannot have spaces between the number and operator
+            if token.begins_with_whitespace:
                 continue
 
             # Unary operators can only happen at the start, after an operator or after "("
@@ -78,8 +84,8 @@ class DAQEQuationCompiler:
             # If the previous token is a unary operator, we need to merge it with the float
             _ = new_tokens.pop() # Remove the float now at the top of new_tokens
             # Replace the float token with one with the operator
-            new_tokens[-1] = DAQEquationToken(token=prev_token.token + token.token, token_type=DAWEquationTokenType.FLOAT, begin=prev_token.begin, end=token.end)
-            
+            new_tokens[-1] = DAQEquationToken(token=prev_token.token + token.token, token_type=DAWEquationTokenType.FLOAT, begin=prev_token.begin, end=token.end, begins_with_whitespace=False)
+        return new_tokens
 
     def tokenize(self, src: str) -> list[DAQEquationToken]:
         tokens: list[DAQEquationToken] = []
@@ -87,6 +93,7 @@ class DAQEQuationCompiler:
         current_token_begin: int = 0
         current_token_str: str = ""
         current_token_match_type: int = 0
+        current_token_beings_with_whitespace: bool = False
         current_token_type: DAWEquationTokenType = DAWEquationTokenType.UNKNOWN
 
         def push_token_validate(token: DAQEquationToken) -> None:
@@ -98,14 +105,17 @@ class DAQEQuationCompiler:
             nonlocal current_token_match_type
             nonlocal current_token_type
             nonlocal current_token_begin
+            nonlocal current_token_beings_with_whitespace
             if current_token_str:
-                push_token_validate(DAQEquationToken(token=current_token_str, token_type=current_token_type, begin=current_token_begin, end=pos-1))
+                push_token_validate(DAQEquationToken(token=current_token_str, token_type=current_token_type, begin=current_token_begin, end=pos-1, begins_with_whitespace=current_token_beings_with_whitespace))
                 current_token_str = ""
                 current_token_type = token_type
-                current_token_match_type = 0      
+                current_token_match_type = 0
+                current_token_beings_with_whitespace = False  
             current_token_begin = pos          
             if push_also:
-                push_token_validate(DAQEquationToken(token=push_also, token_type=token_type, begin=pos, end=pos))
+                push_token_validate(DAQEquationToken(token=push_also, token_type=token_type, begin=pos, end=pos, begins_with_whitespace=current_token_beings_with_whitespace))
+                current_token_beings_with_whitespace = False
 
         def push_if_not_type(token_match_type: int, pos: int, token_type: DAWEquationTokenType = DAWEquationTokenType.UNKNOWN) -> None:
             nonlocal current_token_match_type
@@ -137,6 +147,7 @@ class DAQEQuationCompiler:
                 current_token_str += c
             elif c == " ":
                 push_current_token(pos=i)
+                current_token_beings_with_whitespace = True
             else:
                 push_if_not_type(2, token_type=DAWEquationTokenType.FUNCTION, pos=i)
                 current_token_str += c
