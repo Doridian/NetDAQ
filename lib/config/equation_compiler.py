@@ -84,7 +84,9 @@ class DAQEQuationCompiler:
             # If the previous token is a unary operator, we need to merge it with the float
             _ = new_tokens.pop() # Remove the float now at the top of new_tokens
             # Replace the float token with one with the operator
-            new_tokens[-1] = DAQEquationToken(token=prev_token.token + token.token, token_type=DAWEquationTokenType.FLOAT, begin=prev_token.begin, end=token.end, begins_with_whitespace=False)
+            new_token = DAQEquationToken(token=prev_token.token + token.token, token_type=DAWEquationTokenType.FLOAT, begin=prev_token.begin, end=token.end, begins_with_whitespace=False)
+            new_token.validate()
+            new_tokens[-1] = new_token
         return new_tokens
 
     def tokenize(self, src: str) -> list[DAQEquationToken]:
