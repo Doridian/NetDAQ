@@ -25,7 +25,7 @@ class DAQEquationTokenType(Enum):
 
 UNARY_OPERATORS = ["+", "-"]
 OPERATORS = ["*", "^", "**", "/"]
-FUNCTIONS = ["exp", "ln", "log", "abs", "int", "sqrt"] # log = math.log10, ln = math.log
+FUNCTIONS = ["exp", "ln", "log", "abs", "int", "sqrt"] # log = log10
 DIGITS = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "."]
 
 OPTERATOR_PRECEDENCE = { # Keep these 1000 apart, we nudge them for optimization reasons
