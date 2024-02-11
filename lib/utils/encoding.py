@@ -2,22 +2,28 @@ from struct import pack, unpack
 from datetime import datetime
 
 INT_LEN = 4
-NULL_INT = b'\x00' * INT_LEN
+NULL_INT = b"\x00" * INT_LEN
+
 
 def parse_int(data: bytes) -> int:
-        return int.from_bytes(data[:INT_LEN], 'big')
+    return int.from_bytes(data[:INT_LEN], "big")
+
 
 def parse_short(data: bytes) -> int:
-    return int.from_bytes(data[:2], 'big')
+    return int.from_bytes(data[:2], "big")
+
 
 def make_int(value: int) -> bytes:
-    return int.to_bytes(value, INT_LEN, 'big')
+    return int.to_bytes(value, INT_LEN, "big")
+
 
 def parse_float(data: bytes) -> float:
-    return unpack('>f', data[:4])[0]
+    return unpack(">f", data[:4])[0]
+
 
 def make_float(value: float) -> bytes:
-    return pack('>f', value)
+    return pack(">f", value)
+
 
 def parse_time(data: bytes) -> datetime:
     now = datetime.now()
@@ -40,17 +46,21 @@ def parse_time(data: bytes) -> datetime:
         microsecond=(parse_int(data[8:]) & 0xFFFF) * 1000,
     )
 
+
 def make_time(time: datetime) -> bytes:
-    return bytes([
-        time.hour,
-        time.minute,
-        time.second,
-        time.month,
-        0x08, # unknown value
-        time.day,
-        time.year % 100,
-        0x00, # unknown value
-    ])
+    return bytes(
+        [
+            time.hour,
+            time.minute,
+            time.second,
+            time.month,
+            0x08,  # unknown value
+            time.day,
+            time.year % 100,
+            0x00,  # unknown value
+        ]
+    )
+
 
 def make_optional_indexed_bit(bit: int | None) -> bytes:
     if bit is None:

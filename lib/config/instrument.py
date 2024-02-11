@@ -2,6 +2,7 @@ from dataclasses import dataclass, field
 from .enums import DAQConfigSpeed, DAQConfigTrigger, DAQConfigBits
 from .channels.base import DAQComputedChannel, DAQAnalogChannel
 
+
 @dataclass(frozen=True, kw_only=True)
 class DAQConfiguration:
     speed: DAQConfigSpeed = DAQConfigSpeed.SLOW
@@ -9,7 +10,9 @@ class DAQConfiguration:
     trigger_out: bool = False
     drift_correction: bool = True
     totalizer_debounce: bool = True
-    triggers: list[DAQConfigTrigger] = field(default_factory=lambda: [DAQConfigTrigger.INTERVAL])
+    triggers: list[DAQConfigTrigger] = field(
+        default_factory=lambda: [DAQConfigTrigger.INTERVAL]
+    )
 
     interval_time: float = 1.0
     alarm_time: float = 1.0

@@ -1,9 +1,18 @@
 from dataclasses import dataclass
-from ..enums import DAQAnalogMeasuremenType, DAQOhmsRange, DAQVDCRange, DAQVACRange, DAQCurrentRange, DAQThermocoupleRange, DAQRTDRange
+from ..enums import (
+    DAQAnalogMeasuremenType,
+    DAQOhmsRange,
+    DAQVDCRange,
+    DAQVACRange,
+    DAQCurrentRange,
+    DAQThermocoupleRange,
+    DAQRTDRange,
+)
 from ...utils.encoding import make_int, make_float, NULL_INT
 from ..base import ConfigError
 from .base import DAQAnalogChannel
 from typing import override
+
 
 @dataclass(frozen=True, kw_only=True)
 class DAQAnalogOhmsChannel(DAQAnalogChannel):
@@ -11,8 +20,12 @@ class DAQAnalogOhmsChannel(DAQAnalogChannel):
     four_wire: bool = False
 
     def __post_init__(self) -> None:
-        if (not self.four_wire) and (self.range == DAQOhmsRange.Ohms_300 or self.range == DAQOhmsRange.Ohms_3k):
-            raise ConfigError("2-wire ohms measurement is not supported for 300 or 3k Ohms range")
+        if (not self.four_wire) and (
+            self.range == DAQOhmsRange.Ohms_300 or self.range == DAQOhmsRange.Ohms_3k
+        ):
+            raise ConfigError(
+                "2-wire ohms measurement is not supported for 300 or 3k Ohms range"
+            )
 
     @override
     def encode(self) -> bytes:
@@ -20,12 +33,15 @@ class DAQAnalogOhmsChannel(DAQAnalogChannel):
         if self.four_wire:
             extra_bits |= 0x0001
 
-        return make_int(DAQAnalogMeasuremenType.Ohms.value) + \
-                    make_int(self.range.value) + \
-                    NULL_INT + \
-                    NULL_INT + \
-                    make_int(extra_bits) + \
-                    self.encode_common_trailer()
+        return (
+            make_int(DAQAnalogMeasuremenType.Ohms.value)
+            + make_int(self.range.value)
+            + NULL_INT
+            + NULL_INT
+            + make_int(extra_bits)
+            + self.encode_common_trailer()
+        )
+
 
 @dataclass(frozen=True, kw_only=True)
 class DAQAnalogVDCChannel(DAQAnalogChannel):
@@ -33,36 +49,45 @@ class DAQAnalogVDCChannel(DAQAnalogChannel):
 
     @override
     def encode(self) -> bytes:
-        return make_int(DAQAnalogMeasuremenType.VDC.value) + \
-                    make_int(self.range.value) + \
-                    NULL_INT + \
-                    NULL_INT + \
-                    NULL_INT + \
-                    self.encode_common_trailer()
-    
+        return (
+            make_int(DAQAnalogMeasuremenType.VDC.value)
+            + make_int(self.range.value)
+            + NULL_INT
+            + NULL_INT
+            + NULL_INT
+            + self.encode_common_trailer()
+        )
+
+
 @dataclass(frozen=True, kw_only=True)
 class DAQAnalogVACChannel(DAQAnalogChannel):
     range: DAQVACRange
 
     @override
     def encode(self) -> bytes:
-        return make_int(DAQAnalogMeasuremenType.VAC.value) + \
-                    make_int(self.range.value) + \
-                    NULL_INT + \
-                    NULL_INT + \
-                    NULL_INT + \
-                    self.encode_common_trailer()
+        return (
+            make_int(DAQAnalogMeasuremenType.VAC.value)
+            + make_int(self.range.value)
+            + NULL_INT
+            + NULL_INT
+            + NULL_INT
+            + self.encode_common_trailer()
+        )
+
 
 @dataclass(frozen=True, kw_only=True)
 class DAQAnalogFrequencyChannel(DAQAnalogChannel):
     @override
     def encode(self) -> bytes:
-        return make_int(DAQAnalogMeasuremenType.Frequency.value) + \
-                    NULL_INT + \
-                    NULL_INT + \
-                    NULL_INT + \
-                    NULL_INT + \
-                    self.encode_common_trailer()
+        return (
+            make_int(DAQAnalogMeasuremenType.Frequency.value)
+            + NULL_INT
+            + NULL_INT
+            + NULL_INT
+            + NULL_INT
+            + self.encode_common_trailer()
+        )
+
 
 @dataclass(frozen=True, kw_only=True)
 class DAQAnalogRTDChannel(DAQAnalogChannel):
@@ -79,17 +104,22 @@ class DAQAnalogRTDChannel(DAQAnalogChannel):
                 raise ConfigError("Fixed RTD does not allow for Alpha value to be set")
         elif self.range == DAQRTDRange.RTD_CUSTOM_385:
             if self.alpha < 0.00374 or self.alpha > 0.00393:
-                raise ConfigError("Custom RTD Alpha value must be between 0.00374 and 0.00393")
+                raise ConfigError(
+                    "Custom RTD Alpha value must be between 0.00374 and 0.00393"
+                )
 
     @override
     def encode(self) -> bytes:
-        return make_int(DAQAnalogMeasuremenType.RTD.value) + \
-                    make_int(self.range.value) + \
-                    make_float(self.alpha) + \
-                    make_float(self.r0) + \
-                    make_int(0x9001) + \
-                    self.encode_common_trailer()
-    
+        return (
+            make_int(DAQAnalogMeasuremenType.RTD.value)
+            + make_int(self.range.value)
+            + make_float(self.alpha)
+            + make_float(self.r0)
+            + make_int(0x9001)
+            + self.encode_common_trailer()
+        )
+
+
 @dataclass(frozen=True, kw_only=True)
 class DAQAnalogThermocoupleChannel(DAQAnalogChannel):
     range: DAQThermocoupleRange
@@ -101,13 +131,16 @@ class DAQAnalogThermocoupleChannel(DAQAnalogChannel):
         if self.open_thermocouple_detect:
             extra_bits |= 0x0001
 
-        return make_int(DAQAnalogMeasuremenType.Thermocouple.value) + \
-                    make_int(self.range.value) + \
-                    NULL_INT + \
-                    NULL_INT + \
-                    make_int(extra_bits) + \
-                    self.encode_common_trailer()
-    
+        return (
+            make_int(DAQAnalogMeasuremenType.Thermocouple.value)
+            + make_int(self.range.value)
+            + NULL_INT
+            + NULL_INT
+            + make_int(extra_bits)
+            + self.encode_common_trailer()
+        )
+
+
 @dataclass(frozen=True, kw_only=True)
 class DAQAnalogCurrentChannel(DAQAnalogChannel):
     range: DAQCurrentRange
@@ -136,9 +169,11 @@ class DAQAnalogCurrentChannel(DAQAnalogChannel):
         if self.range == DAQCurrentRange.Current_100mA:
             extra_bits |= 0x0001
 
-        return make_int(DAQAnalogMeasuremenType.Current.value) + \
-                    make_int(self.range.value) + \
-                    make_float(self.shunt_resistance) + \
-                    NULL_INT + \
-                    make_int(extra_bits) + \
-                    self.encode_common_trailer()
+        return (
+            make_int(DAQAnalogMeasuremenType.Current.value)
+            + make_int(self.range.value)
+            + make_float(self.shunt_resistance)
+            + NULL_INT
+            + make_int(extra_bits)
+            + self.encode_common_trailer()
+        )

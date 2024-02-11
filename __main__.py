@@ -9,13 +9,16 @@ from lib.config.equation_compiler import DAQEQuationCompiler
 from sys import argv
 from asyncio import run, sleep
 
+
 async def main3():
     eqc = DAQEQuationCompiler()
     print(eqc.compile("1 + 3 + 4 + 5 + 6 + 7 + ln(c5) * -35.3e+8 ** 4 / --ln((-C7))"))
 
+
 async def main2():
     eq = DAQEquation()
     print(eq.push_channel(1).push_float(1).add().end().encode())
+
 
 async def main():
     instrument = NetDAQ(ip=argv[1], port=4369)
@@ -35,17 +38,19 @@ async def main():
         await instrument.set_time()
         print("Time set!")
 
-        await instrument.set_config(DAQConfiguration(
-            triggers=[DAQConfigTrigger.INTERVAL],
-            interval_time=0.5,
-            analog_channels=[
-                DAQAnalogOhmsChannel(
-                    range=DAQOhmsRange.Ohms_3k,
-                    four_wire=False,
-                ),
-            ],
-            computed_channels=[],
-        ))
+        await instrument.set_config(
+            DAQConfiguration(
+                triggers=[DAQConfigTrigger.INTERVAL],
+                interval_time=0.5,
+                analog_channels=[
+                    DAQAnalogOhmsChannel(
+                        range=DAQOhmsRange.Ohms_3k,
+                        four_wire=False,
+                    ),
+                ],
+                computed_channels=[],
+            )
+        )
         print("Config set!")
 
         await instrument.reset_totalizer()
@@ -61,5 +66,6 @@ async def main():
         print("Clean shutdown...")
         await instrument.close()
         print("Done!")
+
 
 run(main3())
