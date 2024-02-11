@@ -343,6 +343,7 @@ class DAQEQuationCompiler:
                     # Unary operators can only happen at the start, after an operator or after "("
                     prev_token = tokens[i-1] if i > 0 else None
                     if prev_token and prev_token.token_type != DAQEquationTokenType.OPERATOR and prev_token.token_type != DAQEquationTokenType.UNARY_OPERATOR and prev_token.token_type != DAQEquationTokenType.OPENING_BRACKET:
+                        new_tokens.append(token)
                         continue
                     first_unary_token = i
                     continue
