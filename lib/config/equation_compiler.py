@@ -143,6 +143,8 @@ class DAQEQuationCompiler:
         self.simplify_token_tree(token_tree)
         self.resolve_constant_expression(token_tree)
 
+        #token_tree.print_tree()
+
         eq = DAQEquation()
         self._emit_tree(token_tree, eq)
         _ = eq.end()
@@ -218,13 +220,6 @@ class DAQEQuationCompiler:
 
         if token_tree.value:
             self._emit_token(token_tree.value, eq)
-
-    # Turn tree into only subtrees of the form "X" or "X", <OP>, "Y"
-    def simplify_token_tree(self, token_tree: DAQEquationTokenTreeNode) -> None:
-        for node in token_tree.nodes:
-            self.simplify_token_tree(node)
-
-        self._simplify_token_tree_shallow(token_tree)
 
     def resolve_constant_expression(self, token_tree: DAQEquationTokenTreeNode) -> None:
         for node in token_tree.nodes:
@@ -302,6 +297,13 @@ class DAQEQuationCompiler:
             token_tree.value = DAQEquationToken(token=str(new_float_value), token_type=DAQEquationTokenType.FLOAT, begin=node_left.value.begin, end=node_right.value.end, begins_with_whitespace=False)
             token_tree.nodes = []  
 
+    # Turn tree into only subtrees of the form "X" or "X", <OP>, "Y"
+    def simplify_token_tree(self, token_tree: DAQEquationTokenTreeNode) -> None:
+        for node in token_tree.nodes:
+            self.simplify_token_tree(node)
+
+        self._simplify_token_tree_shallow(token_tree)
+
     def _simplify_token_tree_shallow(self, token_tree: DAQEquationTokenTreeNode) -> None:
         if len(token_tree.nodes) == 1 and not token_tree.value:
             token_tree.value = token_tree.nodes[0].value
@@ -330,7 +332,7 @@ class DAQEQuationCompiler:
             if next_token and next_token.token_type == DAQEquationTokenType.FLOAT:
                 this_operator_precedence -= 1
 
-            if this_operator_precedence <= best_operator_precedence:
+            if this_operator_precedence < best_operator_precedence:
                 continue
             best_operator = i
             best_operator_precedence = this_operator_precedence
