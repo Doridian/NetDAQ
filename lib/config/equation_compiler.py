@@ -4,15 +4,20 @@ from enum import Enum
 from .equation import DAQEquation
 from .base import ConfigError
 
-class DAWEquationTokenType(Enum):
-    UNKNOWN = 0
-    CHANNEL = 1
-    OPERATOR = 2
-    FUNCTION = 3
-    FLOAT = 4
-    BRACKET = 5
+@dataclass(frozen=True, kw_only=True)
+class DAQEquationTokenTypeDC:
+    id: int
+    prev: list[int]
 
-BRACKETS = ["(", ")"]
+class DAWEquationTokenType(Enum):
+    UNKNOWN = DAQEquationTokenTypeDC(id=0, prev=[])
+    CHANNEL = DAQEquationTokenTypeDC(id=1, prev=[0, 2, 5])
+    OPERATOR = DAQEquationTokenTypeDC(id=2, prev=[1, 4, 6])
+    FUNCTION = DAQEquationTokenTypeDC(id=3, prev=[0, 2, 5])
+    FLOAT = DAQEquationTokenTypeDC(id=4, prev=[0, 2, 5])
+    OPENING_BRACKET = DAQEquationTokenTypeDC(id=5, prev=[0, 2, 3, 5])
+    CLOSING_BRACKET = DAQEquationTokenTypeDC(id=6, prev=[1, 4, 6])
+
 UNARY_OPERATORS = ["+", "-"]
 OPERATORS = ["+", "-", "*", "^", "**", "/"]
 FUNCTIONS = ["exp", "ln", "log", "abs", "int", "sqrt"]
@@ -45,9 +50,6 @@ class DAQEquationToken:
         elif self.token_type == DAWEquationTokenType.OPERATOR:    
             if self.token not in OPERATORS:
                 raise ConfigError(f"Invalid operator token {self.token}")
-        elif self.token_type == DAWEquationTokenType.BRACKET:    
-            if self.token not in BRACKETS:
-                raise ConfigError(f"Invalid bracket token {self.token}")
         elif self.token_type == DAWEquationTokenType.FUNCTION:
             if self.token not in FUNCTIONS:
                 raise ConfigError(f"Invalid function token {self.token}")
@@ -59,7 +61,27 @@ class DAQEQuationCompiler:
     def compile(self, src: str) -> DAQEquation | None:
         tokens = self.tokenize(src)
         tokens = self.integrate_unary_minusplus(tokens)
+        self.validate_token_order(tokens)
         print(tokens)
+
+    def validate_token_order(self, tokens: list[DAQEquationToken]) -> None:
+        bracket_counter: int = 0
+
+        for i, token in enumerate(tokens):
+            if token.token_type == DAWEquationTokenType.OPENING_BRACKET:
+                bracket_counter += 1
+            elif token.token_type == DAWEquationTokenType.CLOSING_BRACKET:
+                bracket_counter -= 1
+                if bracket_counter < 0:
+                    raise ConfigError(f"Invalid expression (closing bracket without opening bracket) {token.token}")
+
+            prev_token = tokens[i-1] if i > 0 else None
+            prev_token_id = prev_token.token_type.value.id if prev_token else 0
+            if not prev_token_id in token.token_type.value.prev:
+                raise ConfigError(f"Invalid token order (token {token.token} cannot follow token {prev_token.token if prev_token else "BEGIN"})")
+
+        if bracket_counter != 0:
+            raise ConfigError(f"Invalid expression (unclosed brackets)")
 
     def integrate_unary_minusplus(self, tokens: list[DAQEquationToken]) -> list[DAQEquationToken]:
         new_tokens: list[DAQEquationToken] = []
@@ -73,7 +95,7 @@ class DAQEQuationCompiler:
 
             # Unary operators can only happen at the start, after an operator or after "("
             prev_prev_token = tokens[i-2] if i > 1 else None
-            if prev_prev_token and prev_prev_token.token_type != DAWEquationTokenType.OPERATOR and (prev_prev_token.token_type != DAWEquationTokenType.BRACKET or prev_prev_token.token != "("):
+            if prev_prev_token and prev_prev_token.token_type != DAWEquationTokenType.OPERATOR and prev_prev_token.token_type != DAWEquationTokenType.OPENING_BRACKET:
                 continue
 
             # Is there a possibly unary operatoe before the float?
@@ -129,7 +151,7 @@ class DAQEQuationCompiler:
 
         for i, c in enumerate(src.lower()):
             if c == "*":
-                if current_token_str != "*"  and current_token_str:
+                if current_token_str != "*" and current_token_str:
                     push_current_token(token_type=DAWEquationTokenType.OPERATOR, pos=i)
                 current_token_type = DAWEquationTokenType.OPERATOR
                 current_token_str += c
@@ -137,8 +159,10 @@ class DAQEQuationCompiler:
                     push_current_token(pos=i)
             elif c in OPERATORS:
                 push_current_token(push_also=c, token_type=DAWEquationTokenType.OPERATOR, pos=i)
-            elif c in BRACKETS:
-                push_current_token(push_also=c, token_type=DAWEquationTokenType.BRACKET, pos=i)
+            elif c == "(":
+                push_current_token(push_also=c, token_type=DAWEquationTokenType.OPENING_BRACKET, pos=i)
+            elif c == ")":
+                push_current_token(push_also=c, token_type=DAWEquationTokenType.CLOSING_BRACKET, pos=i)
             elif c in ("0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "."):
                 ttype = DAWEquationTokenType.FLOAT
                 if current_token_str and current_token_str[0] == "c":
