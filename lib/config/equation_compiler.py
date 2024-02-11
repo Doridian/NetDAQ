@@ -26,13 +26,13 @@ UNARY_OPERATORS = ["+", "-"]
 OPERATORS = ["*", "^", "**", "/"]
 FUNCTIONS = ["exp", "ln", "log", "abs", "int", "sqrt"]
 
-OPTERATOR_PRECEDENCE = {
-    "+": 1,
-    "-": 1,
-    "*": 2,
-    "/": 2,
-    "^": 3,
-    "**": 3,
+OPTERATOR_PRECEDENCE = { # Keep these 10 apart, we nudge them for optimization reasons
+    "+": 10,
+    "-": 10,
+    "*": 20,
+    "/": 20,
+    "^": 30,
+    "**": 30,
 }
 
 @dataclass(frozen=True, kw_only=True)
@@ -262,7 +262,18 @@ class DAQEQuationCompiler:
         for i, sub_node in enumerate(token_tree.nodes):
             if not sub_node.value or (sub_node.value.token_type != DAQEquationTokenType.OPERATOR and sub_node.value.token_type != DAQEquationTokenType.UNARY_OPERATOR):
                 continue
+
             this_operator_precedence = OPTERATOR_PRECEDENCE[sub_node.value.token]
+
+            # Deprioritize operators that operate on constants
+            # This will force the tree shaker to optimize away all possible constant expressions
+            prev_token = token_tree.nodes[i-1].value if i > 0 else None
+            if prev_token and prev_token.token_type == DAQEquationTokenType.FLOAT:
+                this_operator_precedence -= 1
+            next_token = token_tree.nodes[i+1].value if i+1 < len(token_tree.nodes) else None
+            if next_token and next_token.token_type == DAQEquationTokenType.FLOAT:
+                this_operator_precedence -= 1
+
             if this_operator_precedence <= best_operator_precedence:
                 continue
             best_operator = i
