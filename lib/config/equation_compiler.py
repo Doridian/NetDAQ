@@ -27,13 +27,13 @@ UNARY_OPERATORS = ["+", "-"]
 OPERATORS = ["*", "^", "**", "/"]
 FUNCTIONS = ["exp", "ln", "log", "abs", "int", "sqrt"]
 
-OPTERATOR_PRECEDENCE = { # Keep these 10 apart, we nudge them for optimization reasons
-    "+": 10,
-    "-": 10,
-    "*": 20,
-    "/": 20,
-    "^": 30,
-    "**": 30,
+OPTERATOR_PRECEDENCE = { # Keep these 1000 apart, we nudge them for optimization reasons
+    "+": 1000,
+    "-": 1000,
+    "*": 2000,
+    "/": 2000,
+    "^": 3000,
+    "**": 3000,
 }
 
 @dataclass(frozen=True, kw_only=True)
