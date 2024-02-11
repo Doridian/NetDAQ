@@ -26,6 +26,7 @@ class DAQEquationTokenType(Enum):
 UNARY_OPERATORS = ["+", "-"]
 OPERATORS = ["*", "^", "**", "/"]
 FUNCTIONS = ["exp", "ln", "log", "abs", "int", "sqrt"]
+DIGITS = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "."]
 
 OPTERATOR_PRECEDENCE = { # Keep these 1000 apart, we nudge them for optimization reasons
     "+": 1000,
@@ -513,7 +514,7 @@ class DAQEQuationCompiler:
                 push_current_token(push_also=c, token_type=DAQEquationTokenType.OPENING_BRACKET, pos=i)
             elif c == ")":
                 push_current_token(push_also=c, token_type=DAQEquationTokenType.CLOSING_BRACKET, pos=i)
-            elif c in ("0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "."):
+            elif c in DIGITS:
                 ttype = DAQEquationTokenType.FLOAT
                 if current_token_str and current_token_str[0] == "c":
                     ttype = DAQEquationTokenType.CHANNEL
