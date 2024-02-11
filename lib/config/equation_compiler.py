@@ -25,7 +25,13 @@ class DAQEquationToken:
         if self.token_type == DAWEquationTokenType.UNKNOWN:
             raise ConfigError(f"Unknown token type for token {self.token}")
         elif self.token_type == DAWEquationTokenType.CHANNEL:
-            if not self.token[0] == "c" and not self.token[1:].isdigit():
+            if self.token[0] != "c":
+                raise ConfigError(f"Invalid channel token (does not begin with c) {self.token}")
+            try:
+                n = int(self.token[1:])
+                if n <= 0:
+                    raise ConfigError(f"Invalid channel token (channel number must be greater than 0) {self.token}")
+            except ValueError:
                 raise ConfigError(f"Invalid channel token {self.token}")
         elif self.token_type == DAWEquationTokenType.FLOAT:
             try:
