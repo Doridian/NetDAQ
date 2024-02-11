@@ -136,7 +136,8 @@ class DAQEQuationCompiler:
             elif token.token == "^" or token.token == "**":
                 _ = eq.power()
             else:
-                assert False
+                raise ValueError(f"Unhandled operator token for emit {token}")
+
         elif token.token_type == DAQEquationTokenType.FUNCTION:
             func_token = token.token
             do_negate = func_token[0] == "-"
@@ -156,7 +157,7 @@ class DAQEQuationCompiler:
             elif func_token == "sqrt":
                 _ = eq.sqrt()
             else:
-                assert False
+                raise ValueError(f"Unhandled function token for emit {token}")
 
             if do_negate:
                 _ = eq.unary_minus()
@@ -219,7 +220,7 @@ class DAQEQuationCompiler:
             elif func_token == "sqrt":
                 token_value = sqrt(token_value)
             else:
-                assert False
+                raise ValueError(f"Unhandled function token for constant expression {token_tree.value}")
 
             if do_negate:
                 token_value = -token_value
@@ -249,7 +250,7 @@ class DAQEQuationCompiler:
             elif op.token == "^" or op.token == "**":
                 new_float_value = value_left ** value_right
             else:
-                assert False
+                raise ValueError(f"Unhandled operator token for constant expression {op}")
             
             token_tree.value = DAQEquationToken(token=str(new_float_value), token_type=DAQEquationTokenType.FLOAT, begin=node_left.value.begin, end=node_right.value.end, begins_with_whitespace=False)
             token_tree.nodes = []  
