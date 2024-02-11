@@ -380,20 +380,20 @@ class DAQEQuationCompiler:
         if not tokens:
             return
 
-        last_tokens = tokens[-1]
-        tokens = [
-            DAQEquationToken(token="", token_type=DAQEquationTokenType.BEGIN, begin=0, end=0, begins_with_whitespace=False)
-        ] + tokens + [
-            DAQEquationToken(token="", token_type=DAQEquationTokenType.END, begin=last_tokens.end, end=last_tokens.end, begins_with_whitespace=False)
-        ]
 
         bracket_counter: int = 0
 
-        for i, token in enumerate(tokens):
+        for i in range(len(tokens)+1):
+            if i == len(tokens):
+                last_token_end = tokens[-1].end
+                token = DAQEquationToken(token="", token_type=DAQEquationTokenType.END, begin=last_token_end, end=last_token_end, begins_with_whitespace=False)
+            else:
+                token = tokens[i]
+
             if i == 0:
-                if token.token_type != DAQEquationTokenType.BEGIN:
-                    raise DAQTokenError("Invalid expression (BEGIN token not at the start)", token)
-                continue
+                prev_token = DAQEquationToken(token="", token_type=DAQEquationTokenType.BEGIN, begin=0, end=0, begins_with_whitespace=False)
+            else:
+                prev_token = tokens[i-1]
 
             if token.token_type == DAQEquationTokenType.OPENING_BRACKET:
                 bracket_counter += 1
@@ -402,7 +402,6 @@ class DAQEQuationCompiler:
                 if bracket_counter < 0:
                     raise DAQTokenError("Invalid expression (closing bracket without opening bracket)", token)
 
-            prev_token = tokens[i-1]
             if prev_token.token_type.value.id not in token.token_type.value.prev:
                 raise DAQMultiTokenError(f"Invalid token order (token cannot follow token)", tokens=[prev_token,token])
 
