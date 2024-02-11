@@ -166,11 +166,13 @@ class DAQEQuationCompiler:
         if len(token_tree.nodes) == 1:
             self._emit_tree(token_tree.nodes[0], eq)
         elif len(token_tree.nodes) == 2:
-            assert token_tree.nodes[0].value is not None
+            if token_tree.nodes[0].value is None:
+                raise ValueError(f"Invalid token tree (missing unary operator node value) {token_tree}")
             self._emit_tree(token_tree.nodes[1], eq)
             self._emit_token(token_tree.nodes[0].value, eq)
         elif len(token_tree.nodes) == 3:
-            assert token_tree.nodes[1].value is not None
+            if token_tree.nodes[1].value is None:
+                raise ValueError(f"Invalid token tree (missing binary operator node value) {token_tree}")
             self._emit_tree(token_tree.nodes[0], eq)
             self._emit_tree(token_tree.nodes[2], eq)
             self._emit_token(token_tree.nodes[1].value, eq)
@@ -199,7 +201,8 @@ class DAQEQuationCompiler:
             if (not sub_node.value) or sub_node.value.token_type != DAQEquationTokenType.FLOAT:
                 return
 
-            assert token_tree.value and token_tree.value.token_type == DAQEquationTokenType.FUNCTION
+            if (not token_tree.value) or token_tree.value.token_type != DAQEquationTokenType.FUNCTION:
+                raise ValueError(f"Invalid constant expression {token_tree.value}")
 
             func_token = token_tree.value.token
             do_negate = func_token[0] == "-"
@@ -238,7 +241,10 @@ class DAQEQuationCompiler:
             value_right = float(node_right.value.token)
             new_float_value = 0.0
             op = token_tree.nodes[1].value
-            assert op and (op.token_type == DAQEquationTokenType.OPERATOR or op.token_type == DAQEquationTokenType.UNARY_OPERATOR)
+
+            if (not op) or (op.token_type != DAQEquationTokenType.OPERATOR and op.token_type != DAQEquationTokenType.UNARY_OPERATOR):
+                raise ValueError(f"Invalid operator token for constant expression {op}")
+
             if op.token == "+":
                 new_float_value = value_left + value_right
             elif op.token == "-":
@@ -288,7 +294,8 @@ class DAQEQuationCompiler:
             best_operator = i
             best_operator_precedence = this_operator_precedence
 
-        assert best_operator is not None
+        if best_operator is None:
+            raise ValueError(f"Invalid token tree (no operators found) {token_tree}")
 
         new_tree_left = DAQEquationTokenTreeNode(nodes=token_tree.nodes[:best_operator])
         new_tree_op = DAQEquationTokenTreeNode(value=token_tree.nodes[best_operator].value)
