@@ -257,7 +257,7 @@ class DAQEQuationCompiler:
                 new_float_value = value_left ** value_right
             else:
                 raise ValueError(f"Unhandled operator token for constant expression {op}")
-            
+
             token_tree.value = DAQEquationToken(token=str(new_float_value), token_type=DAQEquationTokenType.FLOAT, begin=node_left.value.begin, end=node_right.value.end, begins_with_whitespace=False)
             token_tree.nodes = []  
 
