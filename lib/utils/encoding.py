@@ -1,5 +1,5 @@
-from struct import pack, unpack
 from datetime import datetime
+from struct import pack, unpack
 
 INT_LEN = 4
 NULL_INT = b"\x00" * INT_LEN

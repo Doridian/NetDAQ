@@ -1,13 +1,16 @@
 #!/usr/bin/env python3
 
-from lib.netdaq import NetDAQ
-from lib.config.instrument import DAQConfiguration, DAQConfigTrigger
-from lib.config.enums import *
+from asyncio import run, sleep
+from sys import argv
+
 from lib.config.channels.analog import *
+from lib.config.enums import *
 from lib.config.equation import DAQEquation
 from lib.config.equation_compiler import DAQEQuationCompiler
-from sys import argv
-from asyncio import run, sleep
+from lib.config.instrument import DAQConfigTrigger, DAQConfiguration
+from lib.netdaq import NetDAQ
+
+# ruff: noqa: N803
 
 
 async def main3():

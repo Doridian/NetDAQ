@@ -1,7 +1,8 @@
 from dataclasses import dataclass
-from ..enums import DAQConfigAlarm
-from ...utils.encoding import make_int, make_float, make_optional_indexed_bit, NULL_INT
 from typing import override
+
+from ...utils.encoding import NULL_INT, make_float, make_int, make_optional_indexed_bit
+from ..enums import DAQConfigAlarm
 
 
 @dataclass(frozen=True, kw_only=True)

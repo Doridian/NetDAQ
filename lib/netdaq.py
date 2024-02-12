@@ -1,29 +1,31 @@
-from datetime import datetime
-from dataclasses import dataclass
+import contextlib
 from asyncio import (
-    sleep,
-    open_connection,
+    CancelledError,
+    Future,
     StreamReader,
     StreamWriter,
-    get_event_loop,
-    Future,
     Task,
-    CancelledError,
+    get_event_loop,
+    open_connection,
+    sleep,
 )
+from dataclasses import dataclass
+from datetime import datetime
 from traceback import print_exc
+
 from .config.base import ConfigError
+from .config.channels.base import DAQDisabledChannel
 from .config.enums import DAQCommand
 from .config.instrument import DAQConfiguration
-from .config.channels.base import DAQDisabledChannel
 from .utils.encoding import (
+    INT_LEN,
+    NULL_INT,
     make_int,
+    make_time,
     parse_float,
     parse_int,
     parse_short,
-    make_time,
     parse_time,
-    INT_LEN,
-    NULL_INT,
 )
 
 CHANNEL_PAYLOAD_LENGTH = 2492
@@ -360,10 +362,9 @@ class NetDAQ:
         )
 
     async def stop(self) -> None:
-        try:
+        with contextlib.suppress(ResponseErrorCodeException):
             _ = await self.send_rpc(DAQCommand.STOP)
-        except ResponseErrorCodeException:
-            pass
+
 
     async def start(self) -> None:
         start_payload = NULL_INT * 4

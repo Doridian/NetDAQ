@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
-from .enums import DAQConfigSpeed, DAQConfigTrigger, DAQConfigBits
-from .channels.base import DAQComputedChannel, DAQAnalogChannel
+
+from .channels.base import DAQAnalogChannel, DAQComputedChannel
+from .enums import DAQConfigBits, DAQConfigSpeed, DAQConfigTrigger
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -16,8 +17,8 @@ class DAQConfiguration:
 
     interval_time: float = 1.0
     alarm_time: float = 1.0
-    analog_channels: list[DAQAnalogChannel] = field(default_factory=lambda: [])
-    computed_channels: list[DAQComputedChannel] = field(default_factory=lambda: [])
+    analog_channels: list[DAQAnalogChannel] = field(default_factory=list)
+    computed_channels: list[DAQComputedChannel] = field(default_factory=list)
 
     def bits(self) -> int:
         result = self.speed.value

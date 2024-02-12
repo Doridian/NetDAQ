@@ -1,17 +1,18 @@
 from dataclasses import dataclass
+from typing import override
+
+from ...utils.encoding import NULL_INT, make_float, make_int
+from ..base import ConfigError
 from ..enums import (
     DAQAnalogMeasuremenType,
-    DAQOhmsRange,
-    DAQVDCRange,
-    DAQVACRange,
     DAQCurrentRange,
-    DAQThermocoupleRange,
+    DAQOhmsRange,
     DAQRTDRange,
+    DAQThermocoupleRange,
+    DAQVACRange,
+    DAQVDCRange,
 )
-from ...utils.encoding import make_int, make_float, NULL_INT
-from ..base import ConfigError
 from .base import DAQAnalogChannel
-from typing import override
 
 
 @dataclass(frozen=True, kw_only=True)

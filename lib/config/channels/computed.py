@@ -1,9 +1,10 @@
-from .base import DAQComputedChannel
-from ..enums import DAQComputedMeasurementType
-from ...utils.encoding import make_int, NULL_INT
-from ..equation import DAQEquation
 from dataclasses import dataclass
 from typing import override
+
+from ...utils.encoding import NULL_INT, make_int
+from ..enums import DAQComputedMeasurementType
+from ..equation import DAQEquation
+from .base import DAQComputedChannel
 
 
 @dataclass(frozen=True, kw_only=True)
