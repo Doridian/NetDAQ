@@ -1,27 +1,47 @@
 from datetime import datetime
 from dataclasses import dataclass
-from asyncio import sleep, open_connection, StreamReader, StreamWriter, get_event_loop, Future, Task, CancelledError
+from asyncio import (
+    sleep,
+    open_connection,
+    StreamReader,
+    StreamWriter,
+    get_event_loop,
+    Future,
+    Task,
+    CancelledError,
+)
 from traceback import print_exc
 from .config.base import ConfigError
 from .config.enums import DAQCommand
 from .config.instrument import DAQConfiguration
 from .config.channels.base import DAQDisabledChannel
-from .utils.encoding import make_int, parse_float, parse_int, parse_short, make_time, parse_time, INT_LEN, NULL_INT
+from .utils.encoding import (
+    make_int,
+    parse_float,
+    parse_int,
+    parse_short,
+    make_time,
+    parse_time,
+    INT_LEN,
+    NULL_INT,
+)
 
 CHANNEL_PAYLOAD_LENGTH = 2492
 FIXED_HEADER = bytes([0x46, 0x45, 0x4C, 0x58])
 HEADER_LEN = 16
 
+
 class ResponseErrorCodeException(Exception):
     def __init__(self, code: int, payload: bytes) -> None:
-        super().__init__(f'Response error: {code:08x}')
+        super().__init__(f"Response error: {code:08x}")
         self.code = code
         self.payload = payload
+
 
 @dataclass(frozen=True, kw_only=True)
 class DAQReading:
     time: datetime
-    dio: int # short
+    dio: int  # short
     alarm1_bitmask: int
     alarm2_bitmask: int
     totalizer: int
@@ -36,10 +56,12 @@ class DAQReading:
     def is_channel_alarm2(self, index: int) -> bool:
         return self.alarm1_bitmask & (1 << index) != 0
 
+
 @dataclass(frozen=True, kw_only=True)
 class DAQReadingResult:
     readings: list[DAQReading]
     instrument_queue: int
+
 
 class NetDAQ:
     _ip: str
@@ -78,10 +100,20 @@ class NetDAQ:
             return
 
         try:
-            _ = await self.send_rpc(DAQCommand.CLEAR_MONITOR_CHANNEL, writer=sock_writer, wait_response=False)
-            _ = await self.send_rpc(DAQCommand.STOP, writer=sock_writer, wait_response=False)
-            _ = await self.send_rpc(DAQCommand.DISABLE_SPY, writer=sock_writer, wait_response=False)
-            _ = await self.send_rpc(DAQCommand.CLOSE, writer=sock_writer, wait_response=False)
+            _ = await self.send_rpc(
+                DAQCommand.CLEAR_MONITOR_CHANNEL,
+                writer=sock_writer,
+                wait_response=False,
+            )
+            _ = await self.send_rpc(
+                DAQCommand.STOP, writer=sock_writer, wait_response=False
+            )
+            _ = await self.send_rpc(
+                DAQCommand.DISABLE_SPY, writer=sock_writer, wait_response=False
+            )
+            _ = await self.send_rpc(
+                DAQCommand.CLOSE, writer=sock_writer, wait_response=False
+            )
         except:
             pass
 
@@ -91,9 +123,11 @@ class NetDAQ:
     async def _reader_coroutine_func(self, sock_reader: StreamReader) -> None:
         try:
             while True:
-                response_header = await sock_reader.readexactly(len(FIXED_HEADER) + (INT_LEN * 3))
-                if response_header[0:len(FIXED_HEADER)] != FIXED_HEADER:
-                    raise Exception('Invalid response header')
+                response_header = await sock_reader.readexactly(
+                    len(FIXED_HEADER) + (INT_LEN * 3)
+                )
+                if response_header[0 : len(FIXED_HEADER)] != FIXED_HEADER:
+                    raise Exception("Invalid response header")
 
                 response_sequence_id = parse_int(response_header[4:])
 
@@ -101,15 +135,24 @@ class NetDAQ:
                 response_payload_length = parse_int(response_header[12:])
 
                 if response_payload_length > HEADER_LEN:
-                    payload = await sock_reader.readexactly(response_payload_length - HEADER_LEN)
+                    payload = await sock_reader.readexactly(
+                        response_payload_length - HEADER_LEN
+                    )
                 else:
-                    payload = b''
+                    payload = b""
 
                 response_future = self._response_futures.pop(response_sequence_id, None)
                 if (not response_future) or response_future.cancelled():
-                    print('Got unsolicited response, ignoring...', response_sequence_id, response_code, payload)
+                    print(
+                        "Got unsolicited response, ignoring...",
+                        response_sequence_id,
+                        response_code,
+                        payload,
+                    )
                 elif response_code != 0x00000000:
-                    response_future.set_exception(ResponseErrorCodeException(code=response_code, payload=payload))
+                    response_future.set_exception(
+                        ResponseErrorCodeException(code=response_code, payload=payload)
+                    )
                 else:
                     response_future.set_result(payload)
         except CancelledError:
@@ -124,24 +167,35 @@ class NetDAQ:
 
         reader, writer = await open_connection(self._ip, self._port)
         self._sock_writer = writer
-        self._reader_coroutine = get_event_loop().create_task(self._reader_coroutine_func(sock_reader=reader))
+        self._reader_coroutine = get_event_loop().create_task(
+            self._reader_coroutine_func(sock_reader=reader)
+        )
 
-    async def send_rpc(self, command: DAQCommand, *, payload: bytes = b'', writer: StreamWriter | None = None, wait_response: bool = True) -> bytes:
+    async def send_rpc(
+        self,
+        command: DAQCommand,
+        *,
+        payload: bytes = b"",
+        writer: StreamWriter | None = None,
+        wait_response: bool = True,
+    ) -> bytes:
         if not writer:
             writer = self._sock_writer
         if not writer:
-            raise Exception('Not connected')
+            raise Exception("Not connected")
 
         sequence_id = self._sequence_id
         self._sequence_id += 1
         if self._sequence_id > 0xFFFFFFFF:
             self._sequence_id = 0x00
 
-        packet = FIXED_HEADER + \
-                    make_int(sequence_id) + \
-                    make_int(command.value) + \
-                    make_int(len(payload) + HEADER_LEN) + \
-                    payload
+        packet = (
+            FIXED_HEADER
+            + make_int(sequence_id)
+            + make_int(command.value)
+            + make_int(len(payload) + HEADER_LEN)
+            + payload
+        )
 
         response_future: Future[bytes] = get_event_loop().create_future()
         if wait_response:
@@ -151,7 +205,7 @@ class NetDAQ:
         await writer.drain()
 
         if not wait_response:
-            return b''
+            return b""
         return await response_future
 
     async def ping(self) -> None:
@@ -163,7 +217,9 @@ class NetDAQ:
     async def get_base_channel(self) -> int:
         return parse_int(await self.send_rpc(DAQCommand.GET_BASE_CHANNEL))
 
-    async def get_version_info(self, command: DAQCommand = DAQCommand.GET_VERSION_INFO) -> list[bytes]:
+    async def get_version_info(
+        self, command: DAQCommand = DAQCommand.GET_VERSION_INFO
+    ) -> list[bytes]:
         data = await self.send_rpc(command)
         blobs: list[bytes] = []
         current: list[int] = []
@@ -197,35 +253,43 @@ class NetDAQ:
         await self.wait_for_idle()
 
     async def set_config(self, config: DAQConfiguration) -> None:
-        payload = make_int(config.bits()) + \
-                    NULL_INT + \
-                    NULL_INT + \
-                    make_int(int(config.interval_time)) + \
-                    make_int(int(config.interval_time * 1000) % 1000) + \
-                    NULL_INT + \
-                    NULL_INT + \
-                    make_int(int(config.alarm_time)) + \
-                    make_int(int(config.alarm_time * 1000) % 1000) + \
-                    NULL_INT + \
-                    NULL_INT + \
-                    NULL_INT + \
-                    b'\x00\x00\x00\x64'
+        payload = (
+            make_int(config.bits())
+            + NULL_INT
+            + NULL_INT
+            + make_int(int(config.interval_time))
+            + make_int(int(config.interval_time * 1000) % 1000)
+            + NULL_INT
+            + NULL_INT
+            + make_int(int(config.alarm_time))
+            + make_int(int(config.alarm_time * 1000) % 1000)
+            + NULL_INT
+            + NULL_INT
+            + NULL_INT
+            + b"\x00\x00\x00\x64"
+        )
 
         max_analog_channels = self.analog_channels()
         analog_channels = config.analog_channels
         if len(analog_channels) < max_analog_channels:
-            analog_channels += [DAQDisabledChannel() for _ in range(max_analog_channels - len(analog_channels))]
+            analog_channels += [
+                DAQDisabledChannel()
+                for _ in range(max_analog_channels - len(analog_channels))
+            ]
         elif len(analog_channels) > max_analog_channels:
-            raise ConfigError('Too many analog channels')
+            raise ConfigError("Too many analog channels")
 
         max_computed_channels = self.computed_channels()
         computed_channels = config.computed_channels
         if len(computed_channels) < max_computed_channels:
-            computed_channels += [DAQDisabledChannel() for _ in range(max_computed_channels - len(computed_channels))]
+            computed_channels += [
+                DAQDisabledChannel()
+                for _ in range(max_computed_channels - len(computed_channels))
+            ]
         elif len(computed_channels) > max_computed_channels:
-            raise ConfigError('Too many computed channels')
+            raise ConfigError("Too many computed channels")
 
-        aux_buffer = b''
+        aux_buffer = b""
         for chan in analog_channels:
             res, equation = chan.encode_with_aux(len(aux_buffer))
             payload += res
@@ -240,9 +304,9 @@ class NetDAQ:
 
         length_left = CHANNEL_PAYLOAD_LENGTH - len(payload)
         if length_left < 0:
-            raise ConfigError('Payload too large (too many equations?)')
+            raise ConfigError("Payload too large (too many equations?)")
         elif length_left > 0:
-            payload += (b'\x00' * length_left)
+            payload += b"\x00" * length_left
 
         _ = await self.send_rpc(DAQCommand.SET_CONFIG, payload=payload)
         await self.wait_for_idle()
@@ -251,10 +315,14 @@ class NetDAQ:
         if channel <= 0:
             _ = await self.send_rpc(DAQCommand.CLEAR_MONITOR_CHANNEL)
         else:
-            _ = await self.send_rpc(DAQCommand.SET_MONITOR_CHANNEL, payload=make_int(channel))
+            _ = await self.send_rpc(
+                DAQCommand.SET_MONITOR_CHANNEL, payload=make_int(channel)
+            )
 
     async def get_readings(self, max_readings: int = 0xFF) -> DAQReadingResult:
-        data = await self.send_rpc(DAQCommand.GET_READINGS, payload=make_int(max_readings))
+        data = await self.send_rpc(
+            DAQCommand.GET_READINGS, payload=make_int(max_readings)
+        )
         result: list[DAQReading] = []
 
         chunk_length = parse_int(data[0:])
@@ -263,18 +331,23 @@ class NetDAQ:
 
         chunks_buf = data[12:]
         for i in range(chunk_count):
-            chunk_data = chunks_buf[i * chunk_length:(i + 1) * chunk_length]
+            chunk_data = chunks_buf[i * chunk_length : (i + 1) * chunk_length]
             if parse_int(chunk_data[0:]) != 0x10:
-                raise Exception('Invalid chunk header')
+                raise Exception("Invalid chunk header")
 
-            result.append(DAQReading(
-                time=parse_time(chunk_data[4:]),
-                dio=parse_short(chunk_data[12:]),
-                alarm1_bitmask=parse_int(chunk_data[16:]),
-                alarm2_bitmask=parse_int(chunk_data[20:]),
-                totalizer=parse_int(chunk_data[24:]),
-                values=[parse_float(chunk_data[i:]) for i in range(28, len(chunk_data), 4)],
-            ))
+            result.append(
+                DAQReading(
+                    time=parse_time(chunk_data[4:]),
+                    dio=parse_short(chunk_data[12:]),
+                    alarm1_bitmask=parse_int(chunk_data[16:]),
+                    alarm2_bitmask=parse_int(chunk_data[20:]),
+                    totalizer=parse_int(chunk_data[24:]),
+                    values=[
+                        parse_float(chunk_data[i:])
+                        for i in range(28, len(chunk_data), 4)
+                    ],
+                )
+            )
 
         return DAQReadingResult(readings=result, instrument_queue=instrument_queue)
 
@@ -282,7 +355,9 @@ class NetDAQ:
         _ = await self.send_rpc(DAQCommand.DISABLE_SPY)
 
     async def query_spy(self, channel: int) -> float:
-        return parse_float(await self.send_rpc(DAQCommand.QUERY_SPY, payload=make_int(channel)))
+        return parse_float(
+            await self.send_rpc(DAQCommand.QUERY_SPY, payload=make_int(channel))
+        )
 
     async def stop(self) -> None:
         try:

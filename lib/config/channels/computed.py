@@ -5,18 +5,22 @@ from ..equation import DAQEquation
 from dataclasses import dataclass
 from typing import override
 
+
 @dataclass(frozen=True, kw_only=True)
 class DAQComputedAverageChannel(DAQComputedChannel):
     channel_bitmask: int
 
     @override
     def encode(self) -> bytes:
-        return make_int(DAQComputedMeasurementType.Average.value) + \
-                    NULL_INT + \
-                    NULL_INT + \
-                    NULL_INT + \
-                    make_int(self.channel_bitmask) + \
-                    self.encode_common_trailer()
+        return (
+            make_int(DAQComputedMeasurementType.Average.value)
+            + NULL_INT
+            + NULL_INT
+            + NULL_INT
+            + make_int(self.channel_bitmask)
+            + self.encode_common_trailer()
+        )
+
 
 @dataclass(frozen=True, kw_only=True)
 class DAQComputedAminusBChannel(DAQComputedChannel):
@@ -25,12 +29,15 @@ class DAQComputedAminusBChannel(DAQComputedChannel):
 
     @override
     def encode(self) -> bytes:
-        return make_int(DAQComputedMeasurementType.AminusB.value) + \
-                    NULL_INT + \
-                    make_int(self.channel_a) + \
-                    NULL_INT + \
-                    make_int(self.channel_b) + \
-                    self.encode_common_trailer()
+        return (
+            make_int(DAQComputedMeasurementType.AminusB.value)
+            + NULL_INT
+            + make_int(self.channel_a)
+            + NULL_INT
+            + make_int(self.channel_b)
+            + self.encode_common_trailer()
+        )
+
 
 @dataclass(frozen=True, kw_only=True)
 class DAQComputedAminusAvgChannel(DAQComputedChannel):
@@ -39,12 +46,15 @@ class DAQComputedAminusAvgChannel(DAQComputedChannel):
 
     @override
     def encode(self) -> bytes:
-        return make_int(DAQComputedMeasurementType.AminusB.value) + \
-                    NULL_INT + \
-                    make_int(self.channel_a) + \
-                    NULL_INT + \
-                    make_int(self.channel_bitmask) + \
-                    self.encode_common_trailer()
+        return (
+            make_int(DAQComputedMeasurementType.AminusB.value)
+            + NULL_INT
+            + make_int(self.channel_a)
+            + NULL_INT
+            + make_int(self.channel_bitmask)
+            + self.encode_common_trailer()
+        )
+
 
 @dataclass(frozen=True, kw_only=True)
 class DAQComputedEquationChannel(DAQComputedChannel):
@@ -52,11 +62,13 @@ class DAQComputedEquationChannel(DAQComputedChannel):
 
     @override
     def encode_with_aux(self, aux_offset: int) -> tuple[bytes, bytes]:
-        payload = make_int(DAQComputedMeasurementType.Equation.value) + \
-                    NULL_INT + \
-                    NULL_INT + \
-                    NULL_INT + \
-                    make_int(aux_offset) + \
-                    self.encode_common_trailer()
+        payload = (
+            make_int(DAQComputedMeasurementType.Equation.value)
+            + NULL_INT
+            + NULL_INT
+            + NULL_INT
+            + make_int(aux_offset)
+            + self.encode_common_trailer()
+        )
 
         return payload, self.equation.encode()

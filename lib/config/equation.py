@@ -4,6 +4,7 @@ from .base import ConfigError
 from ..utils.encoding import make_int, make_float
 from dataclasses import dataclass
 
+
 @dataclass(frozen=True, eq=True)
 class DAQEquationOpcodeConfig:
     code: int
@@ -11,22 +12,24 @@ class DAQEquationOpcodeConfig:
     pops: int
     pushes: int
 
+
 class DAQEquationOpcode(Enum):
-    END          = DAQEquationOpcodeConfig(0x00, [], 1, 0)
+    END = DAQEquationOpcodeConfig(0x00, [], 1, 0)
     PUSH_CHANNEL = DAQEquationOpcodeConfig(0x01, [int], 0, 1)
-    PUSH_FLOAT   = DAQEquationOpcodeConfig(0x02, [float], 0, 1)
-    UNARY_MINUS  = DAQEquationOpcodeConfig(0x04, [], 1, 1)
-    SUBTRACT     = DAQEquationOpcodeConfig(0x05, [], 2, 1)
-    ADD          = DAQEquationOpcodeConfig(0x06, [], 2, 1)
-    MULTIPLY     = DAQEquationOpcodeConfig(0x07, [], 2, 1)
-    DIVIDE       = DAQEquationOpcodeConfig(0x08, [], 2, 1)
-    POWER        = DAQEquationOpcodeConfig(0x09, [], 2, 1)
-    EXP          = DAQEquationOpcodeConfig(0x0A, [], 1, 1)
-    LN           = DAQEquationOpcodeConfig(0x0B, [], 1, 1)
-    LOG          = DAQEquationOpcodeConfig(0x0C, [], 1, 1)
-    ABS          = DAQEquationOpcodeConfig(0x0D, [], 1, 1)
-    INT          = DAQEquationOpcodeConfig(0x0E, [], 1, 1)
-    SQRT         = DAQEquationOpcodeConfig(0x0F, [], 1, 1)
+    PUSH_FLOAT = DAQEquationOpcodeConfig(0x02, [float], 0, 1)
+    UNARY_MINUS = DAQEquationOpcodeConfig(0x04, [], 1, 1)
+    SUBTRACT = DAQEquationOpcodeConfig(0x05, [], 2, 1)
+    ADD = DAQEquationOpcodeConfig(0x06, [], 2, 1)
+    MULTIPLY = DAQEquationOpcodeConfig(0x07, [], 2, 1)
+    DIVIDE = DAQEquationOpcodeConfig(0x08, [], 2, 1)
+    POWER = DAQEquationOpcodeConfig(0x09, [], 2, 1)
+    EXP = DAQEquationOpcodeConfig(0x0A, [], 1, 1)
+    LN = DAQEquationOpcodeConfig(0x0B, [], 1, 1)
+    LOG = DAQEquationOpcodeConfig(0x0C, [], 1, 1)
+    ABS = DAQEquationOpcodeConfig(0x0D, [], 1, 1)
+    INT = DAQEquationOpcodeConfig(0x0E, [], 1, 1)
+    SQRT = DAQEquationOpcodeConfig(0x0F, [], 1, 1)
+
 
 class DAQEquationOperation:
     _opcode: DAQEquationOpcode
@@ -39,11 +42,15 @@ class DAQEquationOperation:
 
         expected_types = opcode.value.args
         if len(expected_types) != len(params):
-            raise ConfigError(f"Invalid number of arguments for opcode {opcode.name} (expected {len(expected_types)}, got {len(params)})")
+            raise ConfigError(
+                f"Invalid number of arguments for opcode {opcode.name} (expected {len(expected_types)}, got {len(params)})"
+            )
 
         for i, (expected_type, arg) in enumerate(zip(expected_types, params)):
             if not isinstance(arg, expected_type):
-                raise ConfigError(f"Invalid type for argument {i} of opcode {opcode.name} (expected {expected_type}, got {type(arg)})")
+                raise ConfigError(
+                    f"Invalid type for argument {i} of opcode {opcode.name} (expected {expected_type}, got {type(arg)})"
+                )
 
         self._opcode = opcode
         self._params = params
@@ -62,10 +69,11 @@ class DAQEquationOperation:
 
     def get_opcode(self) -> DAQEquationOpcode:
         return self._opcode
-    
+
     @override
     def __repr__(self) -> str:
-        return f"{self._opcode.name} {",".join(map(str, self._params))}"
+        return f"{self._opcode.name} {", ".join(map(str, self._params))}"
+
 
 class DAQEquation:
     _ops: list[DAQEquationOperation]
@@ -89,8 +97,10 @@ class DAQEquation:
         opcode = opcode_enum.value
 
         if self._stack_depth < opcode.pops:
-            raise ConfigError(f"Stack underflow for opcode {opcode_enum.name} (expected >= {opcode.pops} elements, got {self._stack_depth})")
-        
+            raise ConfigError(
+                f"Stack underflow for opcode {opcode_enum.name} (expected >= {opcode.pops} elements, got {self._stack_depth})"
+            )
+
         self._stack_depth -= opcode.pops
         self._stack_depth += opcode.pushes
 
@@ -112,7 +122,9 @@ class DAQEquation:
 
     def end(self) -> "DAQEquation":
         if self._stack_depth != 1:
-            raise ConfigError(f"Invalid stack depth at end of equation (expected 1, got {self._stack_depth})")
+            raise ConfigError(
+                f"Invalid stack depth at end of equation (expected 1, got {self._stack_depth})"
+            )
         self._push_op(DAQEquationOperation(DAQEquationOpcode.END, []))
         self._has_end = True
         return self
@@ -180,7 +192,7 @@ class DAQEquation:
 
     def encode(self) -> bytes:
         self.validate()
-        payload = b''
+        payload = b""
         for op in self._ops:
             payload += op.encode()
         return payload
