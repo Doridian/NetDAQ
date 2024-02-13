@@ -31,6 +31,7 @@ OPERATORS = ["*", "^", "**", "/"]  # ^ == **
 COMMUTATIVE_OPERATORS = ["+", "*"]
 FUNCTIONS = ["exp", "ln", "log", "abs", "int", "sqrt"]  # log == log10
 DIGITS = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "."]
+DIGIT_ALLOWED_MIDDLE = ["e", "f", "d"]
 
 OPTERATOR_PRECEDENCE = (
     {  # Keep these 1000 apart, we nudge them for optimization reasons
@@ -78,8 +79,12 @@ class DAQEquationToken:
             except ValueError:
                 raise DAQTokenError("Invalid channel token", self)
         elif self.token_type == DAQEquationTokenType.FLOAT:
+            float_token = self.token
+            if float_token[-1] == "f" or float_token[-1] == "d":
+                float_token = float_token[:-1]
+
             try:
-                _ = float(self.token)
+                _ = float(float_token)
             except ValueError:
                 raise DAQTokenError("Invalid float token", self)
         elif self.token_type == DAQEquationTokenType.OPERATOR:
@@ -114,7 +119,19 @@ class DAQEquationTokenTreeNode:
             if do_negate:
                 _ = eq.unary_minus()
         elif token.token_type == DAQEquationTokenType.FLOAT:
-            _ = eq.push_float(float(token.token))
+            token_str = token.token
+            is_double = False
+            if token_str[-1] == "f":
+                token_str = token_str[:-1]
+            elif token_str[-1] == "d":
+                token_str = token_str[:-1]
+                is_double = True
+
+            token_val = float(token_str)
+            if is_double:
+                _ = eq.push_double(token_val)
+            else:
+                _ = eq.push_float(token_val)
         elif (
             token.token_type == DAQEquationTokenType.OPERATOR
             or token.token_type == DAQEquationTokenType.UNARY_OPERATOR
@@ -707,7 +724,7 @@ class DAQEQuationCompiler:
                 push_current_token(pos=i)
                 current_token_beings_with_whitespace = True
             else:
-                if c == "e" and current_token_match_type == 1:
+                if current_token_match_type == 1 and c in DIGIT_ALLOWED_MIDDLE:
                     current_token_str += c
                     continue
 
