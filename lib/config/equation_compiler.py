@@ -181,11 +181,10 @@ class DAQEquationTokenTreeNode:
 
             # Reorder nodes to minimize stack usage
             eq_a = DAQEquation()
+            self.nodes[0].emit_tree(eq_a)
+
             eq_b = DAQEquation()
-            node_a = self.nodes[0]
-            node_a.emit_tree(eq_a)
-            node_b = self.nodes[2]
-            node_b.emit_tree(eq_b)
+            self.nodes[2].emit_tree(eq_b)
 
             operator = self.nodes[1].value
             if operator.token in COMMUTATIVE_OPERATORS and eq_a.get_max_stack_depth() < eq_b.get_max_stack_depth():
