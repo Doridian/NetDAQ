@@ -187,16 +187,17 @@ class DAQEquationTokenTreeNode:
                     self,
                 )
 
+            operator = self.nodes[1].value
+
             # Reorder nodes to minimize stack usage
             node_a = self.nodes[0]
             node_b = self.nodes[2]
-            if node_a.get_max_stack() < node_b.get_max_stack():
+            if operator.token in COMMUTATIVE_OPERATORS and node_a.get_max_stack() < node_b.get_max_stack():
                 node_b.emit_tree(eq)
                 node_a.emit_tree(eq)
             else:
                 node_a.emit_tree(eq)
                 node_b.emit_tree(eq)
-            operator = self.nodes[1].value
 
             self._emit_token(operator, eq)
 
