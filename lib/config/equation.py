@@ -80,10 +80,30 @@ class DAQEquation:
     _has_end: bool = False
     _has_channel: bool = False
     _stack_depth: int = 0
+    _max_stack_depth: int = 0
 
     def __init__(self) -> None:
         super().__init__()
         self._ops = []
+
+    def copy(self) -> "DAQEquation":
+        new_eq = DAQEquation()
+        new_eq._ops = self._ops.copy()
+        new_eq._has_end = self._has_end
+        new_eq._has_channel = self._has_channel
+        new_eq._stack_depth = self._stack_depth
+        new_eq._max_stack_depth = self._max_stack_depth
+        return new_eq
+
+    def restore(self, eq: "DAQEquation") -> None:
+        self._ops = eq._ops.copy()
+        self._has_end = eq._has_end
+        self._has_channel = eq._has_channel
+        self._stack_depth = eq._stack_depth
+        self._max_stack_depth = eq._max_stack_depth
+
+    def get_max_stack_depth(self) -> int:
+        return self._max_stack_depth
 
     @override
     def __repr__(self) -> str:
@@ -103,6 +123,8 @@ class DAQEquation:
 
         self._stack_depth -= opcode.pops
         self._stack_depth += opcode.pushes
+        if self._stack_depth > self._max_stack_depth:
+            self._max_stack_depth = self._stack_depth
 
         self._ops.append(op)
 

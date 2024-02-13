@@ -162,14 +162,6 @@ class DAQEquationTokenTreeNode:
             if do_negate:
                 _ = eq.unary_minus()
 
-    def get_max_stack(self) -> int:
-        if len(self.nodes) <= 2:
-            return 1
-        if len(self.nodes) == 3:
-            return 2
-
-        raise DAQTreeError("Invalid token tree (invalid number of nodes)", self)
-
     def emit_tree(self, eq: DAQEquation) -> None:
         if len(self.nodes) == 1:
             self.nodes[0].emit_tree(eq)
@@ -187,17 +179,22 @@ class DAQEquationTokenTreeNode:
                     self,
                 )
 
-            operator = self.nodes[1].value
-
             # Reorder nodes to minimize stack usage
             node_a = self.nodes[0]
             node_b = self.nodes[2]
-            if operator.token in COMMUTATIVE_OPERATORS and node_a.get_max_stack() < node_b.get_max_stack():
-                node_b.emit_tree(eq)
-                node_a.emit_tree(eq)
-            else:
-                node_a.emit_tree(eq)
-                node_b.emit_tree(eq)
+
+            operator = self.nodes[1].value
+            flipped_eq = None
+            if operator.token in COMMUTATIVE_OPERATORS:
+                flipped_eq = eq.copy()
+                node_b.emit_tree(flipped_eq)
+                node_a.emit_tree(flipped_eq)
+
+            node_a.emit_tree(eq)
+            node_b.emit_tree(eq)
+
+            if flipped_eq and flipped_eq.get_max_stack_depth() < eq.get_max_stack_depth():
+                eq.restore(flipped_eq)
 
             self._emit_token(operator, eq)
 
