@@ -8,7 +8,7 @@ from dataclasses import dataclass
 @dataclass(frozen=True, eq=True)
 class DAQEquationOpcodeConfig:
     code: int
-    args: list[type[int] | type[float]]
+    args: list[type[int] | type[float] | type[bytes]]
     pops: int
     pushes: int
 
@@ -17,6 +17,7 @@ class DAQEquationOpcode(Enum):
     END = DAQEquationOpcodeConfig(0x00, [], 1, 0)
     PUSH_CHANNEL = DAQEquationOpcodeConfig(0x01, [int], 0, 1)
     PUSH_FLOAT = DAQEquationOpcodeConfig(0x02, [float], 0, 1)
+    UNKNOWN_3 = DAQEquationOpcodeConfig(0x03, [bytes], 0, 1)
     UNARY_MINUS = DAQEquationOpcodeConfig(0x04, [], 1, 1)
     SUBTRACT = DAQEquationOpcodeConfig(0x05, [], 2, 1)
     ADD = DAQEquationOpcodeConfig(0x06, [], 2, 1)
@@ -64,6 +65,8 @@ class DAQEquationOperation:
                 payload += make_int(cast(int, arg))
             elif expected_type == float:
                 payload += make_float(cast(float, arg))
+            elif expected_type == bytes:
+                payload += cast(bytes, arg)
 
         return payload
 
@@ -169,6 +172,12 @@ class DAQEquation:
         if isinstance(value, int):
             value = float(value)
         self._push_op(DAQEquationOperation(DAQEquationOpcode.PUSH_FLOAT, [value]))
+        return self
+
+    def unknown_3(self, data: bytes) -> "DAQEquation":
+        if len(data) != 8:
+            raise ConfigError("Invalid length for unknown_3 data (expected 8 bytes)")
+        self._push_op(DAQEquationOperation(DAQEquationOpcode.UNKNOWN_3, [data]))
         return self
 
     def unary_minus(self) -> "DAQEquation":
