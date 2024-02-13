@@ -134,14 +134,6 @@ class DAQEquation:
         if not self._has_channel:
             raise ConfigError("Equation requires at least one channel reference")
 
-    def clear(self) -> "DAQEquation":
-        self._ops = []
-        self._has_channel = False
-        self._has_end = False
-        self._stack_depth = 0
-        self._max_stack_depth = 0
-        return self
-
     def end(self) -> "DAQEquation":
         if self._stack_depth != 1:
             raise ConfigError(
