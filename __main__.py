@@ -12,7 +12,7 @@ from asyncio import run, sleep
 
 async def main3():
     eqc = DAQEQuationCompiler()
-    print(eqc.compile("1 + 3 + 4 + 5 + 6 + 7 + ln(c5) * -35.3e+8 ** 4 / --ln((-C7))"))
+    print(eqc.compile("1 + 3 + 4 + 5 + 6 + 7 + ln(c5) * -35.3e+8 ** 4 / -ln((-C7))"))
     print(eqc.compile("C1 + C2 + C3 + C4 + C5"))
 
 

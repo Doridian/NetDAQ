@@ -79,23 +79,32 @@ class DAQEquation:
     _ops: list[DAQEquationOperation]
     _has_end: bool = False
     _has_channel: bool = False
-    _stack_depth: int = 0
-    _max_stack_depth: int = 0
+    _stack_depth: int
+    _max_stack_depth: int
+    _input_stack_depth: int
 
-    def __init__(self) -> None:
+    def __init__(self, input_stack_depth: int = 0) -> None:
         super().__init__()
         self._ops = []
+        self._input_stack_depth = input_stack_depth
+        self._stack_depth = input_stack_depth
+        self._max_stack_depth = input_stack_depth
 
     def append(self, eq: "DAQEquation") -> None:
         if self._has_end:
             raise ConfigError("Cannot append to equation after end opcode")
+
+        if self._stack_depth < eq._input_stack_depth:
+            raise ConfigError(
+                f"Stack underflow for equation append (expected >= {eq._input_stack_depth} elements, got {self._stack_depth})"
+            )
 
         self._ops += eq._ops
         self._has_channel = self._has_channel or eq._has_channel
         self._has_end = eq._has_end
 
         # Following equation has to deal with our whole stack depth for its entire duration
-        eq_max_stack_depth = eq._max_stack_depth + self._stack_depth
+        eq_max_stack_depth = (eq._max_stack_depth + self._stack_depth) - eq._input_stack_depth
         if eq_max_stack_depth > self._max_stack_depth:
             self._max_stack_depth = eq_max_stack_depth
 
@@ -103,6 +112,9 @@ class DAQEquation:
 
     def get_max_stack_depth(self) -> int:
         return self._max_stack_depth
+
+    def get_stack_depth(self) -> int:
+        return self._stack_depth
 
     @override
     def __repr__(self) -> str:
@@ -133,6 +145,9 @@ class DAQEquation:
 
         if not self._has_channel:
             raise ConfigError("Equation requires at least one channel reference")
+
+        if self._input_stack_depth != 0:
+            raise ConfigError("Valid equation input stack depth must be 0")
 
     def end(self) -> "DAQEquation":
         if self._stack_depth != 1:

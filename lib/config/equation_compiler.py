@@ -163,6 +163,8 @@ class DAQEquationTokenTreeNode:
                 _ = eq.unary_minus()
 
     def emit_tree(self, eq: DAQEquation) -> None:
+        old_stack_depth = eq.get_stack_depth()
+
         if len(self.nodes) == 1:
             self.nodes[0].emit_tree(eq)
         elif len(self.nodes) == 2:
@@ -170,6 +172,7 @@ class DAQEquationTokenTreeNode:
                 raise DAQTreeError(
                     "Invalid token tree (missing unary operator node value)", self
                 )
+
             self.nodes[1].emit_tree(eq)
             self._emit_token(self.nodes[0].value, eq)
         elif len(self.nodes) == 3:
@@ -182,9 +185,11 @@ class DAQEquationTokenTreeNode:
             # Reorder nodes to minimize stack usage
             eq_a = DAQEquation()
             self.nodes[0].emit_tree(eq_a)
+            assert eq_a.get_stack_depth() == 1
 
             eq_b = DAQEquation()
             self.nodes[2].emit_tree(eq_b)
+            assert eq_b.get_stack_depth() == 1
 
             operator = self.nodes[1].value
             if operator.token in COMMUTATIVE_OPERATORS and eq_a.get_max_stack_depth() < eq_b.get_max_stack_depth():
@@ -198,6 +203,8 @@ class DAQEquationTokenTreeNode:
 
         if self.value:
             self._emit_token(self.value, eq)
+
+        assert eq.get_stack_depth() == old_stack_depth + 1
 
     def resolve_constant_expression(self) -> None:
         for node in self.nodes:
