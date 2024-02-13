@@ -86,27 +86,20 @@ class DAQEquation:
         super().__init__()
         self._ops = []
 
-    def copy(self) -> "DAQEquation":
-        new_eq = DAQEquation()
-        new_eq._ops = self._ops.copy()
-        new_eq._has_end = self._has_end
-        new_eq._has_channel = self._has_channel
-        new_eq._stack_depth = self._stack_depth
-        new_eq._max_stack_depth = self._max_stack_depth
-        return new_eq
-
-    def restore(self, eq: "DAQEquation") -> None:
-        self._ops = eq._ops.copy()
-        self._has_end = eq._has_end
-        self._has_channel = eq._has_channel
-        self._stack_depth = eq._stack_depth
-        self._max_stack_depth = eq._max_stack_depth
-
     def append(self, eq: "DAQEquation") -> None:
-        for op in eq._ops:
-            self._push_op(op)
+        if self._has_end:
+            raise ConfigError("Cannot append to equation after end opcode")
+
+        self._ops += eq._ops
         self._has_channel = self._has_channel or eq._has_channel
-        self._has_end = self._has_end or eq._has_end
+        self._has_end = eq._has_end
+
+        # Following equation has to deal with our whole stack depth for its entire duration
+        eq_max_stack_depth = eq._max_stack_depth + self._stack_depth
+        if eq_max_stack_depth > self._max_stack_depth:
+            self._max_stack_depth = eq_max_stack_depth
+
+        self._stack_depth += eq._stack_depth
 
     def get_max_stack_depth(self) -> int:
         return self._max_stack_depth
