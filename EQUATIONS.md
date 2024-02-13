@@ -23,7 +23,7 @@ PUSH 20.0; PUSH [2]; PUSH [1]; DIV; LOG; MUL; RET
 - 0x00 = END program (aka "return" top of stack)
 - 0x01 = PUSH the value of the following channel (2-byte integer) (`C1`)
 - 0x02 = PUSH following 4-byte float immediate (`1.234`)
-- 0x03 = ? (unused)
+- 0x03 = PUSH following 8-byte double immediate (unused by stock software, discovered by trial and error)
 - 0x04 = POP top of stack, PUSH its inverse (`-X`)
 - 0x05 = POP and subtract top 2 values on stack (top of stack is RHS), PUSH result (`X-Y`)
 - 0x06 = POP and add top 2 values on stack, PUSH result (`X+Y`)

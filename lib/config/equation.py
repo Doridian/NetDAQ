@@ -1,35 +1,35 @@
 from enum import Enum
 from typing import Any, cast, override
 from .base import ConfigError
-from ..utils.encoding import make_int, make_float
+from ..utils.encoding import make_int, make_float, make_double
 from dataclasses import dataclass
 
 
 @dataclass(frozen=True, eq=True)
 class DAQEquationOpcodeConfig:
     code: int
-    args: list[type[int] | type[float] | type[bytes]]
+    args: list[type[int] | type[float]]
+    lengths: list[int]
     pops: int
     pushes: int
 
-
 class DAQEquationOpcode(Enum):
-    END = DAQEquationOpcodeConfig(0x00, [], 1, 0)
-    PUSH_CHANNEL = DAQEquationOpcodeConfig(0x01, [int], 0, 1)
-    PUSH_FLOAT = DAQEquationOpcodeConfig(0x02, [float], 0, 1)
-    UNKNOWN_3 = DAQEquationOpcodeConfig(0x03, [bytes], 0, 1)
-    UNARY_MINUS = DAQEquationOpcodeConfig(0x04, [], 1, 1)
-    SUBTRACT = DAQEquationOpcodeConfig(0x05, [], 2, 1)
-    ADD = DAQEquationOpcodeConfig(0x06, [], 2, 1)
-    MULTIPLY = DAQEquationOpcodeConfig(0x07, [], 2, 1)
-    DIVIDE = DAQEquationOpcodeConfig(0x08, [], 2, 1)
-    POWER = DAQEquationOpcodeConfig(0x09, [], 2, 1)
-    EXP = DAQEquationOpcodeConfig(0x0A, [], 1, 1)
-    LN = DAQEquationOpcodeConfig(0x0B, [], 1, 1)
-    LOG = DAQEquationOpcodeConfig(0x0C, [], 1, 1)
-    ABS = DAQEquationOpcodeConfig(0x0D, [], 1, 1)
-    INT = DAQEquationOpcodeConfig(0x0E, [], 1, 1)
-    SQRT = DAQEquationOpcodeConfig(0x0F, [], 1, 1)
+    END = DAQEquationOpcodeConfig(0x00, [], [], 1, 0)
+    PUSH_CHANNEL = DAQEquationOpcodeConfig(0x01, [int], [2], 0, 1)
+    PUSH_FLOAT = DAQEquationOpcodeConfig(0x02, [float], [4], 0, 1)
+    PUSH_DOUBLE = DAQEquationOpcodeConfig(0x03, [float], [8], 0, 1)
+    UNARY_MINUS = DAQEquationOpcodeConfig(0x04, [], [], 1, 1)
+    SUBTRACT = DAQEquationOpcodeConfig(0x05, [], [], 2, 1)
+    ADD = DAQEquationOpcodeConfig(0x06, [], [], 2, 1)
+    MULTIPLY = DAQEquationOpcodeConfig(0x07, [], [], 2, 1)
+    DIVIDE = DAQEquationOpcodeConfig(0x08, [], [], 2, 1)
+    POWER = DAQEquationOpcodeConfig(0x09, [], [], 2, 1)
+    EXP = DAQEquationOpcodeConfig(0x0A, [], [], 1, 1)
+    LN = DAQEquationOpcodeConfig(0x0B, [], [], 1, 1)
+    LOG = DAQEquationOpcodeConfig(0x0C, [], [], 1, 1)
+    ABS = DAQEquationOpcodeConfig(0x0D, [], [], 1, 1)
+    INT = DAQEquationOpcodeConfig(0x0E, [], [], 1, 1)
+    SQRT = DAQEquationOpcodeConfig(0x0F, [], [], 1, 1)
 
 
 class DAQEquationOperation:
@@ -58,15 +58,19 @@ class DAQEquationOperation:
 
     def encode(self) -> bytes:
         expected_types = self._opcode.value.args
+        expected_lengths = self._opcode.value.lengths
 
         payload = bytes([self._opcode.value.code])
-        for expected_type, arg in zip(expected_types, self._params):
+        for expected_type, expected_length, arg in zip(expected_types, expected_lengths, self._params):
             if expected_type == int:
-                payload += make_int(cast(int, arg))
+                payload += make_int(cast(int, arg), len=expected_length)
             elif expected_type == float:
-                payload += make_float(cast(float, arg))
-            elif expected_type == bytes:
-                payload += cast(bytes, arg)
+                if expected_length == 4:
+                    payload += make_float(cast(float, arg))
+                elif expected_length == 8:
+                    payload += make_double(cast(float, arg))
+                else:
+                    raise ValueError(f"Invalid length for float argument: {expected_length}")
 
         return payload
 
@@ -173,10 +177,10 @@ class DAQEquation:
         self._push_op(DAQEquationOperation(DAQEquationOpcode.PUSH_FLOAT, [value]))
         return self
 
-    def unknown_3(self, data: bytes) -> "DAQEquation":
-        if len(data) != 8:
-            raise ConfigError("Invalid length for unknown_3 data (expected 8 bytes)")
-        self._push_op(DAQEquationOperation(DAQEquationOpcode.UNKNOWN_3, [data]))
+    def push_double(self, value: float) -> "DAQEquation":
+        if isinstance(value, int):
+            value = float(value)
+        self._push_op(DAQEquationOperation(DAQEquationOpcode.PUSH_DOUBLE, [value]))
         return self
 
     def unary_minus(self) -> "DAQEquation":

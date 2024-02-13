@@ -5,16 +5,16 @@ INT_LEN = 4
 NULL_INT = b"\x00" * INT_LEN
 
 
-def parse_int(data: bytes) -> int:
-    return int.from_bytes(data[:INT_LEN], "big")
+def parse_int(data: bytes, *, len: int = INT_LEN) -> int:
+    return int.from_bytes(data[:len], "big")
 
 
 def parse_short(data: bytes) -> int:
     return int.from_bytes(data[:2], "big")
 
 
-def make_int(value: int) -> bytes:
-    return int.to_bytes(value, INT_LEN, "big")
+def make_int(value: int, *, len: int = INT_LEN) -> bytes:
+    return int.to_bytes(value, len, "big")
 
 
 def parse_float(data: bytes) -> float:
@@ -23,6 +23,10 @@ def parse_float(data: bytes) -> float:
 
 def make_float(value: float) -> bytes:
     return pack(">f", value)
+
+
+def make_double(value: float)-> bytes:
+    return pack(">d", value)
 
 
 def parse_time(data: bytes) -> datetime:

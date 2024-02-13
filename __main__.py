@@ -4,6 +4,7 @@ from lib.netdaq import NetDAQ
 from lib.config.instrument import DAQConfiguration, DAQConfigTrigger
 from lib.config.enums import *
 from lib.config.channels.analog import *
+from lib.config.channels.computed import *
 from lib.config.equation import DAQEquation
 from lib.config.equation_compiler import DAQEQuationCompiler
 from sys import argv
@@ -39,17 +40,22 @@ async def main():
         await instrument.set_time()
         print("Time set!")
 
+        eq = DAQEquation().push_channel(1).push_double(123456789.0).add().end()
+
         await instrument.set_config(
             DAQConfiguration(
                 triggers=[DAQConfigTrigger.INTERVAL],
                 interval_time=0.5,
                 analog_channels=[
-                    DAQAnalogOhmsChannel(
-                        range=DAQOhmsRange.Ohms_3k,
-                        four_wire=False,
+                    DAQAnalogVDCChannel(
+                        range=DAQVDCRange.VDC_3V,
                     ),
                 ],
-                computed_channels=[],
+                computed_channels=[
+                    DAQComputedEquationChannel(
+                        equation=eq,
+                    )
+                ],
             )
         )
         print("Config set!")
@@ -69,4 +75,4 @@ async def main():
         print("Done!")
 
 
-run(main3())
+run(main())
