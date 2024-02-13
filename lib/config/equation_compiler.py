@@ -101,12 +101,6 @@ class DAQEquationTokenTreeNode:
     nodes: list["DAQEquationTokenTreeNode"] = field(default_factory=lambda: [])
     value: DAQEquationToken | None = None
 
-    def print_tree(self, indent: str = "") -> None:
-        if self.value:
-            print(f"{indent}{self.value.token}")
-        for node in self.nodes:
-            node.print_tree(indent + "  ")
-
     @staticmethod
     def _emit_token(token: DAQEquationToken, eq: DAQEquation) -> None:
         if token.token_type == DAQEquationTokenType.CHANNEL:
@@ -162,18 +156,18 @@ class DAQEquationTokenTreeNode:
             if do_negate:
                 _ = eq.unary_minus()
 
-    def emit_tree(self, eq: DAQEquation) -> None:
+    def emit(self, eq: DAQEquation) -> None:
         old_stack_depth = eq.get_stack_depth()
 
         if len(self.nodes) == 1:
-            self.nodes[0].emit_tree(eq)
+            self.nodes[0].emit(eq)
         elif len(self.nodes) == 2:
             if self.nodes[0].value is None:
                 raise DAQTreeError(
                     "Invalid token tree (missing unary operator node value)", self
                 )
 
-            self.nodes[1].emit_tree(eq)
+            self.nodes[1].emit(eq)
             self._emit_token(self.nodes[0].value, eq)
         elif len(self.nodes) == 3:
             if self.nodes[1].value is None:
@@ -184,11 +178,11 @@ class DAQEquationTokenTreeNode:
 
             # Reorder nodes to minimize stack usage
             eq_a = DAQEquation()
-            self.nodes[0].emit_tree(eq_a)
+            self.nodes[0].emit(eq_a)
             assert eq_a.get_stack_depth() == 1
 
             eq_b = DAQEquation()
-            self.nodes[2].emit_tree(eq_b)
+            self.nodes[2].emit(eq_b)
             assert eq_b.get_stack_depth() == 1
 
             operator = self.nodes[1].value
@@ -373,6 +367,27 @@ class DAQEquationTokenTreeNode:
             new_tree_right,
         ]
 
+    @override
+    def __repr__(self) -> str:
+        return self.repr_with_indent()
+
+    def repr_with_indent(self, indent: str = "") -> str:
+        res = f"{indent}DAQEquationTokenTreeNode("
+        sub_indent = indent + '  '
+
+        if self.value:
+            res +=  f"value=\"{self.value.token}\""
+
+        if self.nodes:
+            if self.value:
+                res += ", "
+            res += "nodes=[\n"
+            for node in self.nodes:
+                res += node.repr_with_indent(sub_indent + '  ') + ",\n"
+            res += f"{indent}]"
+
+        return res + ")"
+
 class ParseError(Exception):
     pass
 
@@ -428,10 +443,10 @@ class DAQEQuationCompiler:
         token_tree.simplify_token_tree()
         token_tree.resolve_constant_expression()
 
-        #token_tree.print_tree()
+        print(token_tree)
 
         eq = DAQEquation()
-        token_tree.emit_tree(eq)
+        token_tree.emit(eq)
         _ = eq.end()
         eq.validate()
 
