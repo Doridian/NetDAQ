@@ -82,16 +82,14 @@ class DAQEquation:
     _ops: list[DAQEquationOperation]
     _has_end: bool = False
     _has_channel: bool = False
-    _stack_depth: int
-    _max_stack_depth: int
+    _stack_depth: int = 0
+    _max_stack_depth: int = 0
     _input_stack_depth: int
 
     def __init__(self, input_stack_depth: int = 0) -> None:
         super().__init__()
         self._ops = []
         self._input_stack_depth = input_stack_depth
-        self._stack_depth = input_stack_depth
-        self._max_stack_depth = input_stack_depth
 
     def append(self, eq: "DAQEquation") -> None:
         if self._has_end:
@@ -107,11 +105,11 @@ class DAQEquation:
         self._has_end = eq._has_end
 
         # Following equation has to deal with our whole stack depth for its entire duration
-        eq_max_stack_depth = (eq._max_stack_depth - eq._input_stack_depth) + self._stack_depth
+        eq_max_stack_depth = eq._max_stack_depth + self._stack_depth
         if eq_max_stack_depth > self._max_stack_depth:
             self._max_stack_depth = eq_max_stack_depth
 
-        self._stack_depth += (eq._stack_depth - eq._input_stack_depth)
+        self._stack_depth += eq._stack_depth
 
     def get_max_stack_depth(self) -> int:
         return self._max_stack_depth
@@ -130,9 +128,10 @@ class DAQEquation:
         opcode_enum = op.get_opcode()
         opcode = opcode_enum.value
 
-        if self._stack_depth < opcode.pops:
+        effective_stack_depth = self._stack_depth + self._input_stack_depth
+        if effective_stack_depth < opcode.pops:
             raise ConfigError(
-                f"Stack underflow for opcode {opcode_enum.name} (expected >= {opcode.pops} elements, got {self._stack_depth})"
+                f"Stack underflow for opcode {opcode_enum.name} (expected >= {opcode.pops} elements, got {effective_stack_depth})"
             )
 
         self._stack_depth -= opcode.pops
