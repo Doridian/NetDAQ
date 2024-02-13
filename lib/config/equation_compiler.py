@@ -79,12 +79,8 @@ class DAQEquationToken:
             except ValueError:
                 raise DAQTokenError("Invalid channel token", self)
         elif self.token_type == DAQEquationTokenType.FLOAT:
-            float_token = self.token
-            if float_token[-1] == "f" or float_token[-1] == "d":
-                float_token = float_token[:-1]
-
             try:
-                _ = float(float_token)
+                _, _ = self.value_float()
             except ValueError:
                 raise DAQTokenError("Invalid float token", self)
         elif self.token_type == DAQEquationTokenType.OPERATOR:
@@ -100,6 +96,21 @@ class DAQEquationToken:
             if func_token not in FUNCTIONS:
                 raise DAQTokenError("Invalid function token", self)
 
+    def value_float(self) -> tuple[float, bool]:
+        if self.token_type != DAQEquationTokenType.FLOAT:
+            raise DAQTokenError("Token is not a float", self)
+
+        token_str = self.token
+        suffix = token_str[-1]
+        if suffix == "f" or suffix == "d":
+            token_str = token_str[:-1]
+        return float(token_str), suffix == "d"
+
+    @staticmethod
+    def make_value_float(value: float, is_double: bool) -> str:
+        if is_double:
+            return f"{value}d"
+        return f"{value}f"
 
 @dataclass
 class DAQEquationTokenTreeNode:
@@ -119,15 +130,7 @@ class DAQEquationTokenTreeNode:
             if do_negate:
                 _ = eq.unary_minus()
         elif token.token_type == DAQEquationTokenType.FLOAT:
-            token_str = token.token
-            is_double = False
-            if token_str[-1] == "f":
-                token_str = token_str[:-1]
-            elif token_str[-1] == "d":
-                token_str = token_str[:-1]
-                is_double = True
-
-            token_val = float(token_str)
+            token_val, is_double = token.value_float()
             if is_double:
                 _ = eq.push_double(token_val)
             else:
@@ -243,7 +246,7 @@ class DAQEquationTokenTreeNode:
             if do_negate:
                 func_token = func_token[1:]
 
-            token_value = float(sub_node.value.token)
+            token_value, is_double = sub_node.value.value_float()
             if func_token == "exp":
                 token_value = exp(token_value)
             elif func_token == "ln":
@@ -264,7 +267,13 @@ class DAQEquationTokenTreeNode:
             if do_negate:
                 token_value = -token_value
 
-            self.value = self.nodes[0].value
+            self.value = DAQEquationToken(
+                token_type=DAQEquationTokenType.FLOAT,
+                token=DAQEquationToken.make_value_float(token_value, is_double),
+                begin=sub_node.value.begin,
+                end=sub_node.value.end,
+                begins_with_whitespace=sub_node.value.begins_with_whitespace,
+            )
             self.nodes = []
 
         if len(self.nodes) != 3:
@@ -278,8 +287,9 @@ class DAQEquationTokenTreeNode:
             and node_right.value
             and node_right.value.token_type == DAQEquationTokenType.FLOAT
         ):
-            value_left = float(node_left.value.token)
-            value_right = float(node_right.value.token)
+            value_left, is_double_left = node_left.value.value_float()
+            value_right, is_double_right = node_right.value.value_float()
+
             new_float_value = 0.0
             op = self.nodes[1].value
 
@@ -309,7 +319,7 @@ class DAQEquationTokenTreeNode:
                 )
 
             self.value = DAQEquationToken(
-                token=str(new_float_value),
+                token=DAQEquationToken.make_value_float(new_float_value, is_double_left or is_double_right),
                 token_type=DAQEquationTokenType.FLOAT,
                 begin=node_left.value.begin,
                 end=node_right.value.end,
