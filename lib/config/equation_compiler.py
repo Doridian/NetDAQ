@@ -28,6 +28,7 @@ class DAQEquationTokenType(Enum):
 
 UNARY_OPERATORS = ["+", "-"]
 OPERATORS = ["*", "^", "**", "/"]  # ^ == **
+COMMUTATIVE_OPERATORS = ["+", "*"]
 FUNCTIONS = ["exp", "ln", "log", "abs", "int", "sqrt"]  # log == log10
 DIGITS = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "."]
 
@@ -106,71 +107,8 @@ class DAQEquationTokenTreeNode:
         for node in self.nodes:
             node.print_tree(indent + "  ")
 
-
-class ParseError(Exception):
-    pass
-
-
-class DAQTreeError(ParseError):
-    token_tree: DAQEquationTokenTreeNode
-    raw_msg: str
-
-    def __init__(self, msg: str, token_tree: DAQEquationTokenTreeNode) -> None:
-        super().__init__(f"{msg} {token_tree}")
-        self.token_tree = token_tree
-        self.raw_msg = msg
-
-
-class DAQTokenError(ParseError):
-    token: DAQEquationToken
-    raw_msg: str
-
-    def __init__(self, msg: str, token: DAQEquationToken) -> None:
-        super().__init__(f"{msg} {token}")
-        self.token = token
-        self.raw_msg = msg
-
-
-class DAQMultiTokenError(ParseError):
-    tokens: list[DAQEquationToken]
-    raw_msg: str
-
-    def __init__(self, msg: str, tokens: list[DAQEquationToken]) -> None:
-        super().__init__(f"{msg} {tokens}")
-        self.tokens = tokens
-        self.raw_msg = msg
-
-
-class DAQMissingTokenError(ParseError):
-    raw_msg: str
-
-    def __init__(self, msg: str) -> None:
-        super().__init__(f"{msg} (missing token)")
-        self.raw_msg = msg
-
-
-class DAQEQuationCompiler:
-    def __init__(self) -> None:
-        super().__init__()
-
-    def compile(self, src: str) -> DAQEquation | None:
-        tokens = self.tokenize(src)
-        tokens = self.integrate_unary_minusplus(tokens)
-        self.validate_token_order(tokens)
-        token_tree = self.build_token_tree(tokens.copy())
-        self.simplify_token_tree(token_tree)
-        self.resolve_constant_expression(token_tree)
-
-        #token_tree.print_tree()
-
-        eq = DAQEquation()
-        self._emit_tree(token_tree, eq)
-        _ = eq.end()
-        eq.validate()
-
-        return eq
-
-    def _emit_token(self, token: DAQEquationToken, eq: DAQEquation) -> None:
+    @staticmethod
+    def _emit_token(token: DAQEquationToken, eq: DAQEquation) -> None:
         if token.token_type == DAQEquationTokenType.CHANNEL:
             channel_token = token.token
             do_negate = channel_token[0] == "-"
@@ -224,38 +162,56 @@ class DAQEQuationCompiler:
             if do_negate:
                 _ = eq.unary_minus()
 
-    def _emit_tree(self, token_tree: DAQEquationTokenTreeNode, eq: DAQEquation) -> None:
-        if len(token_tree.nodes) == 1:
-            self._emit_tree(token_tree.nodes[0], eq)
-        elif len(token_tree.nodes) == 2:
-            if token_tree.nodes[0].value is None:
+    def get_max_stack(self) -> int:
+        if len(self.nodes) <= 2:
+            return 1
+        if len(self.nodes) == 3:
+            return 2
+
+        raise DAQTreeError("Invalid token tree (invalid number of nodes)", self)
+
+    def emit_tree(self, eq: DAQEquation) -> None:
+        if len(self.nodes) == 1:
+            self.nodes[0].emit_tree(eq)
+        elif len(self.nodes) == 2:
+            if self.nodes[0].value is None:
                 raise DAQTreeError(
-                    "Invalid token tree (missing unary operator node value)", token_tree
+                    "Invalid token tree (missing unary operator node value)", self
                 )
-            self._emit_tree(token_tree.nodes[1], eq)
-            self._emit_token(token_tree.nodes[0].value, eq)
-        elif len(token_tree.nodes) == 3:
-            if token_tree.nodes[1].value is None:
+            self.nodes[1].emit_tree(eq)
+            self._emit_token(self.nodes[0].value, eq)
+        elif len(self.nodes) == 3:
+            if self.nodes[1].value is None:
                 raise DAQTreeError(
                     f"Invalid token tree (missing binary operator node value)",
-                    token_tree,
+                    self,
                 )
-            self._emit_tree(token_tree.nodes[0], eq)
-            self._emit_tree(token_tree.nodes[2], eq)
-            self._emit_token(token_tree.nodes[1].value, eq)
 
-        if token_tree.value:
-            self._emit_token(token_tree.value, eq)
+            # Reorder nodes to minimize stack usage
+            node_a = self.nodes[0]
+            node_b = self.nodes[2]
+            if node_a.get_max_stack() < node_b.get_max_stack():
+                node_b.emit_tree(eq)
+                node_a.emit_tree(eq)
+            else:
+                node_a.emit_tree(eq)
+                node_b.emit_tree(eq)
+            operator = self.nodes[1].value
 
-    def resolve_constant_expression(self, token_tree: DAQEquationTokenTreeNode) -> None:
-        for node in token_tree.nodes:
-            self.resolve_constant_expression(node)
+            self._emit_token(operator, eq)
 
-        if len(token_tree.nodes) == 1:
-            sub_node = token_tree.nodes[0]
-            if not token_tree.value:
-                token_tree.value = sub_node.value
-                token_tree.nodes = sub_node.nodes
+        if self.value:
+            self._emit_token(self.value, eq)
+
+    def resolve_constant_expression(self) -> None:
+        for node in self.nodes:
+            node.resolve_constant_expression()
+
+        if len(self.nodes) == 1:
+            sub_node = self.nodes[0]
+            if not self.value:
+                self.value = sub_node.value
+                self.nodes = sub_node.nodes
                 return
 
             if (
@@ -264,11 +220,11 @@ class DAQEQuationCompiler:
                 return
 
             if (
-                not token_tree.value
-            ) or token_tree.value.token_type != DAQEquationTokenType.FUNCTION:
-                raise DAQTokenError("Invalid constant expression", token_tree.value)
+                not self.value
+            ) or self.value.token_type != DAQEquationTokenType.FUNCTION:
+                raise DAQTokenError("Invalid constant expression", self.value)
 
-            func_token = token_tree.value.token
+            func_token = self.value.token
             do_negate = func_token[0] == "-"
             if do_negate:
                 func_token = func_token[1:]
@@ -288,20 +244,20 @@ class DAQEQuationCompiler:
                 token_value = sqrt(token_value)
             else:
                 raise DAQTokenError(
-                    "Unhandled function token for constant expression", token_tree.value
+                    "Unhandled function token for constant expression", self.value
                 )
 
             if do_negate:
                 token_value = -token_value
 
-            token_tree.value = token_tree.nodes[0].value
-            token_tree.nodes = []
+            self.value = self.nodes[0].value
+            self.nodes = []
 
-        if len(token_tree.nodes) != 3:
+        if len(self.nodes) != 3:
             return
 
-        node_left = token_tree.nodes[0]
-        node_right = token_tree.nodes[2]
+        node_left = self.nodes[0]
+        node_right = self.nodes[2]
         if (
             node_left.value
             and node_left.value.token_type == DAQEquationTokenType.FLOAT
@@ -311,7 +267,7 @@ class DAQEQuationCompiler:
             value_left = float(node_left.value.token)
             value_right = float(node_right.value.token)
             new_float_value = 0.0
-            op = token_tree.nodes[1].value
+            op = self.nodes[1].value
 
             if not op:
                 raise DAQMissingTokenError("Operator token for constant expression")
@@ -338,38 +294,38 @@ class DAQEQuationCompiler:
                     "Unhandled operator token for constant expression", op
                 )
 
-            token_tree.value = DAQEquationToken(
+            self.value = DAQEquationToken(
                 token=str(new_float_value),
                 token_type=DAQEquationTokenType.FLOAT,
                 begin=node_left.value.begin,
                 end=node_right.value.end,
                 begins_with_whitespace=False,
             )
-            token_tree.nodes = []
+            self.nodes = []
 
     # Turn tree into only subtrees of the form "X" or "X", <OP>, "Y"
-    def simplify_token_tree(self, token_tree: DAQEquationTokenTreeNode) -> None:
-        for node in token_tree.nodes:
-            self.simplify_token_tree(node)
+    def simplify_token_tree(self) -> None:
+        for node in self.nodes:
+            node.simplify_token_tree()
 
-        self._simplify_token_tree_shallow(token_tree)
+        self._simplify_token_tree_shallow()
 
     def _simplify_token_tree_shallow(
-        self, token_tree: DAQEquationTokenTreeNode
+        self
     ) -> None:
-        if len(token_tree.nodes) == 1 and not token_tree.value:
-            token_tree.value = token_tree.nodes[0].value
-            token_tree.nodes = token_tree.nodes[0].nodes
+        if len(self.nodes) == 1 and not self.value:
+            self.value = self.nodes[0].value
+            self.nodes = self.nodes[0].nodes
             return
 
         # 1-3 node subtrees cannot be simplified
-        if len(token_tree.nodes) < 4:
+        if len(self.nodes) < 4:
             return
 
         # We must now be in a leaf node of the form "X", <OP>, "Y", <OP>, "Z", ...
         best_operator: int | None = None
         best_operator_precedence: int = 0
-        for i, sub_node in enumerate(token_tree.nodes):
+        for i, sub_node in enumerate(self.nodes):
             if not sub_node.value or (
                 sub_node.value.token_type != DAQEquationTokenType.OPERATOR
                 and sub_node.value.token_type != DAQEquationTokenType.UNARY_OPERATOR
@@ -380,11 +336,11 @@ class DAQEQuationCompiler:
 
             # Deprioritize operators that operate on constants
             # This will force the tree shaker to optimize away all possible constant expressions
-            prev_token = token_tree.nodes[i - 1].value if i > 0 else None
+            prev_token = self.nodes[i - 1].value if i > 0 else None
             if prev_token and prev_token.token_type == DAQEquationTokenType.FLOAT:
                 this_operator_precedence -= 1
             next_token = (
-                token_tree.nodes[i + 1].value if i + 1 < len(token_tree.nodes) else None
+                self.nodes[i + 1].value if i + 1 < len(self.nodes) else None
             )
             if next_token and next_token.token_type == DAQEquationTokenType.FLOAT:
                 this_operator_precedence -= 1
@@ -395,24 +351,88 @@ class DAQEQuationCompiler:
             best_operator_precedence = this_operator_precedence
 
         if best_operator is None:
-            raise DAQTreeError(f"Invalid token tree (no operators found)", token_tree)
+            raise DAQTreeError(f"Invalid token tree (no operators found)", self)
 
-        new_tree_left = DAQEquationTokenTreeNode(nodes=token_tree.nodes[:best_operator])
+        new_tree_left = DAQEquationTokenTreeNode(nodes=self.nodes[:best_operator])
         new_tree_op = DAQEquationTokenTreeNode(
-            value=token_tree.nodes[best_operator].value
+            value=self.nodes[best_operator].value
         )
         new_tree_right = DAQEquationTokenTreeNode(
-            nodes=token_tree.nodes[best_operator + 1 :]
+            nodes=self.nodes[best_operator + 1 :]
         )
 
-        self._simplify_token_tree_shallow(new_tree_left)
-        self._simplify_token_tree_shallow(new_tree_right)
+        new_tree_left._simplify_token_tree_shallow()
+        new_tree_right._simplify_token_tree_shallow()
 
-        token_tree.nodes = [
+        self.nodes = [
             new_tree_left,
             new_tree_op,
             new_tree_right,
         ]
+
+class ParseError(Exception):
+    pass
+
+
+class DAQTreeError(ParseError):
+    token_tree: DAQEquationTokenTreeNode
+    raw_msg: str
+
+    def __init__(self, msg: str, token_tree: DAQEquationTokenTreeNode) -> None:
+        super().__init__(f"{msg} {token_tree}")
+        self.token_tree = token_tree
+        self.raw_msg = msg
+
+
+class DAQTokenError(ParseError):
+    token: DAQEquationToken
+    raw_msg: str
+
+    def __init__(self, msg: str, token: DAQEquationToken) -> None:
+        super().__init__(f"{msg} {token}")
+        self.token = token
+        self.raw_msg = msg
+
+
+class DAQMultiTokenError(ParseError):
+    tokens: list[DAQEquationToken]
+    raw_msg: str
+
+    def __init__(self, msg: str, tokens: list[DAQEquationToken]) -> None:
+        super().__init__(f"{msg} {tokens}")
+        self.tokens = tokens
+        self.raw_msg = msg
+
+
+class DAQMissingTokenError(ParseError):
+    raw_msg: str
+
+    def __init__(self, msg: str) -> None:
+        super().__init__(f"{msg} (missing token)")
+        self.raw_msg = msg
+
+
+class DAQEQuationCompiler:
+    def __init__(self) -> None:
+        super().__init__()
+
+    def compile(self, src: str) -> DAQEquation | None:
+        tokens = self.tokenize(src)
+        tokens = self.integrate_unary_minusplus(tokens)
+        self.validate_token_order(tokens)
+
+        token_tree = self.build_token_tree(tokens.copy())
+        token_tree.simplify_token_tree()
+        token_tree.resolve_constant_expression()
+
+        #token_tree.print_tree()
+
+        eq = DAQEquation()
+        token_tree.emit_tree(eq)
+        _ = eq.end()
+        eq.validate()
+
+        return eq
 
     def build_token_tree(
         self, tokens: list[DAQEquationToken], *, value: DAQEquationToken | None = None
