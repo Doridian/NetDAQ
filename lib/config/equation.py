@@ -139,6 +139,7 @@ class DAQEquation:
         self._has_channel = False
         self._has_end = False
         self._stack_depth = 0
+        self._max_stack_depth = 0
         return self
 
     def end(self) -> "DAQEquation":
