@@ -180,21 +180,20 @@ class DAQEquationTokenTreeNode:
                 )
 
             # Reorder nodes to minimize stack usage
+            eq_a = DAQEquation()
+            eq_b = DAQEquation()
             node_a = self.nodes[0]
+            node_a.emit_tree(eq_a)
             node_b = self.nodes[2]
+            node_b.emit_tree(eq_b)
 
             operator = self.nodes[1].value
-            flipped_eq = None
-            if operator.token in COMMUTATIVE_OPERATORS:
-                flipped_eq = eq.copy()
-                node_b.emit_tree(flipped_eq)
-                node_a.emit_tree(flipped_eq)
-
-            node_a.emit_tree(eq)
-            node_b.emit_tree(eq)
-
-            if flipped_eq and flipped_eq.get_max_stack_depth() < eq.get_max_stack_depth():
-                eq.restore(flipped_eq)
+            if operator.token in COMMUTATIVE_OPERATORS and eq_a.get_max_stack_depth() < eq_b.get_max_stack_depth():
+                eq.append(eq_b)
+                eq.append(eq_a)
+            else:
+                eq.append(eq_a)
+                eq.append(eq_b)
 
             self._emit_token(operator, eq)
 

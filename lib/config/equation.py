@@ -102,6 +102,12 @@ class DAQEquation:
         self._stack_depth = eq._stack_depth
         self._max_stack_depth = eq._max_stack_depth
 
+    def append(self, eq: "DAQEquation") -> None:
+        for op in eq._ops:
+            self._push_op(op)
+        self._has_channel = self._has_channel or eq._has_channel
+        self._has_end = self._has_end or eq._has_end
+
     def get_max_stack_depth(self) -> int:
         return self._max_stack_depth
 
