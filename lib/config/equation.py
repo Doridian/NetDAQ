@@ -107,11 +107,11 @@ class DAQEquation:
         self._has_end = eq._has_end
 
         # Following equation has to deal with our whole stack depth for its entire duration
-        eq_max_stack_depth = (eq._max_stack_depth + self._stack_depth) - eq._input_stack_depth
+        eq_max_stack_depth = (eq._max_stack_depth - eq._input_stack_depth) + self._stack_depth
         if eq_max_stack_depth > self._max_stack_depth:
             self._max_stack_depth = eq_max_stack_depth
 
-        self._stack_depth += eq._stack_depth
+        self._stack_depth += (eq._stack_depth - eq._input_stack_depth)
 
     def get_max_stack_depth(self) -> int:
         return self._max_stack_depth
