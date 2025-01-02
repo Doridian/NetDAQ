@@ -7,17 +7,21 @@
 - 4-byte whole packet length
 - (optional) payload
 
-## Observation
+## Basics
 - Response command ID 0x00000000 for success or 0xFFFFFFFF with 4-byte error code
 - Response sequence ID == request sequence ID
 - All packets are specified MSB-first / BIG endian
+
+## Remaining unknowns
+- Any command IDs except the ones documented above
+- Everything labelled "UNKNOWN" in this document, a lot of these just seem to be unused/padding or constant parts of packets
 
 ## Command IDs
 - 0x00000000 = Ping, empty request, empty response
 - 0x00000001 = Connection close, empty request, empty response
 - 0x00000002 = Status query, empty request, response [0x90/0x84/0x00 (0x90 = initializing, 0x84 = configuring, 0x00 = idle), 0x00, 0x00, 0x00]
-- 0x00000064 = Request readings, request 4-byte, response variable length
-- 0x00000067 = START command, request 16-byte, empty response
+- 0x00000064 = Request readings, request 4-byte integer maximum readings to return (just use 255), response variable length
+- 0x00000067 = START command, request 16-byte UNKNOWN (all null), empty response
 - 0x00000068 = STOP command, empty request, empty response
 - 0x0000006A = Set time, request time [Hours; Minutes; Seconds; Month; 0x08; Day; 2-digit-Year, 0x00], milliseconds 4-byte, empty response
 - 0x0000006F = Query spy channel, request 4-byte channel, response 4-byte float value
@@ -30,11 +34,6 @@
 - 0x0000007D = Disable spy mode, empty request, empty response
 - 0x0000007F = Get LC version, empty request, response zero-terminated string LC version
 - 0x00000081 = Configuration command, request see below, empty response
-
-## Remaining unknowns
-
-- Any command IDs except the ones documented above
-- Everything labelled "UNKNOWN" in this document
 
 ## Various command payloads
 
