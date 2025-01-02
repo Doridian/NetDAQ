@@ -311,6 +311,12 @@ class NetDAQ:
         _ = await self.send_rpc(DAQCommand.SET_CONFIG, payload=payload)
         await self.wait_for_idle()
 
+    async def set_spy_enable(self, enabled: bool) -> None:
+        if enabled:
+            _ = await self.send_rpc(DAQCommand.ENABLE_SPY)
+        else:
+            _ = await self.send_rpc(DAQCommand.DISABLE_SPY)
+
     async def set_monitor_channel(self, channel: int) -> None:
         if channel <= 0:
             _ = await self.send_rpc(DAQCommand.CLEAR_MONITOR_CHANNEL)
