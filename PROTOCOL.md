@@ -21,7 +21,7 @@
 - 0x00000001 = Connection close, empty request, empty response
 - 0x00000002 = Status query, empty request, response [0x90/0x84/0x00 (0x90 = initializing, 0x84 = configuring, 0x00 = idle), 0x00, 0x00, 0x00]
 - 0x00000064 = Request readings, request 4-byte integer maximum readings to return (just use 255), response variable length
-- 0x00000067 = START command, request 16-byte UNKNOWN (all null), empty response
+- 0x00000067 = START command, request 16-byte UNKNOWN (just send all nullbytes), empty response
 - 0x00000068 = STOP command, empty request, empty response
 - 0x0000006A = Set time, request time [Hours; Minutes; Seconds; Month; 0x08; Day; 2-digit-Year, 0x00], milliseconds 4-byte, empty response
 - 0x0000006F = Query spy channel, request 4-byte channel, response 4-byte float value
