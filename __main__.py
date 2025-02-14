@@ -47,7 +47,9 @@ async def main():
                 triggers=[DAQConfigTrigger.INTERVAL],
                 interval_time=0.5,
                 analog_channels=[
-                    DAQAnalogVDCChannel(
+                    None, # Disable channel 1
+                    None, # Disable channel 2
+                    DAQAnalogVDCChannel( # Use channel 3
                         range=DAQVDCRange.VDC_3V,
                     ),
                 ],

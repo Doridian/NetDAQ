@@ -16,8 +16,8 @@ class DAQConfiguration:
 
     interval_time: float = 1.0
     alarm_time: float = 1.0
-    analog_channels: list[DAQAnalogChannel] = field(default_factory=lambda: [])
-    computed_channels: list[DAQComputedChannel] = field(default_factory=lambda: [])
+    analog_channels: list[DAQAnalogChannel | None] = field(default_factory=lambda: [])
+    computed_channels: list[DAQComputedChannel | None] = field(default_factory=lambda: [])
 
     def bits(self) -> int:
         result = self.speed.value

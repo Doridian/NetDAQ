@@ -273,7 +273,7 @@ class NetDAQ:
         analog_channels = config.analog_channels
         if len(analog_channels) < max_analog_channels:
             analog_channels += [
-                DAQDisabledChannel()
+                None
                 for _ in range(max_analog_channels - len(analog_channels))
             ]
         elif len(analog_channels) > max_analog_channels:
@@ -283,19 +283,25 @@ class NetDAQ:
         computed_channels = config.computed_channels
         if len(computed_channels) < max_computed_channels:
             computed_channels += [
-                DAQDisabledChannel()
+                None
                 for _ in range(max_computed_channels - len(computed_channels))
             ]
         elif len(computed_channels) > max_computed_channels:
             raise ConfigError("Too many computed channels")
 
+        disabled_channel = DAQDisabledChannel()
+
         aux_buffer = b""
         for chan in analog_channels:
+            if chan is None:
+                chan = disabled_channel
             res, equation = chan.encode_with_aux(len(aux_buffer))
             payload += res
             aux_buffer += equation
 
         for chan in computed_channels:
+            if chan is None:
+                chan = disabled_channel
             res, equation = chan.encode_with_aux(len(aux_buffer))
             payload += res
             aux_buffer += equation
