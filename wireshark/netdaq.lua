@@ -108,13 +108,19 @@ dis = function (buf, pinfo, tree)
 	end
 
 
-	-- handle optional payload
-
-	if (length > 16) then
-		local payload_len = length - 16
+	-- handle optional payload. Two cases :
+	-- 	- there is 'normal' payload data accounted for by header pkt_len field
+	--	- there is 'extra' payload data, possibly another netdaq frame (unsupported right now)
+	-- not sure if second case can actually happen.
+	local payload_len = pkt_len_uint - 16
+	if (payload_len > 0) then
 		--	print(string.format('len: %u, PL_len: %u, ', length, payload_len))
 		subtree:add(payload, buf(16,payload_len))
 		pinfo.cols.info:append(string.format(', pl_len=%u', payload_len))
+	end
+	extra_len = length - pkt_len_uint
+	if (extra_len > 0) then
+		pinfo.cols.info:append(string.format(', !! %u extra bytes ??', extra_len))
 	end
 	return length
 end
