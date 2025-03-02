@@ -11,12 +11,13 @@
 netdaq_protocol = Proto("netdaq", "Fluke NetDAQ protocol")
 
 -- all fields must be 'registered' even if they may be missing e.g. payload
+magic = ProtoField.bytes("netdaq.magic" , "magic" )
 seq_id = ProtoField.uint32("netdaq.seq_id" , "seq_id" )
 cmd = ProtoField.uint32("netdaq.cmd" , "cmd" , base.HEX)
 pkt_len = ProtoField.uint32("netdaq.pkt_len" , "pkt_len" , base.DEC)
 payload = ProtoField.bytes("netdaq.payload", "payload")
 
-netdaq_protocol.fields = { message_length, seq_id, cmd, pkt_len, payload}
+netdaq_protocol.fields = { magic, seq_id, cmd, pkt_len, payload}
 
 
 cmd_table = {
@@ -79,8 +80,7 @@ dis = function (buf, pinfo, tree)
 	end
 
 	-- validate "FELX" marker
-	local magic = buf(0,4):uint()
-	if (magic ~= 0x46454c58) then
+	if (buf(0,4):uint() ~= 0x46454c58) then
 		return 0
 	end
 
@@ -89,10 +89,10 @@ dis = function (buf, pinfo, tree)
 	pinfo.cols.info = string.format('seq=%u, CMD=0x%02X (%s)', seq_id_uint, cmd_id_uint, cmd_table[cmd_id_uint] )
 
 	local subtree = tree:add(netdaq_protocol, buf(), "netdaq Protocol Data")
-
-	subtree:add(seq_id, seq_id_uint)
-	subtree:add(cmd, cmd_id_uint):append_text(string.format(' (%s)', cmd_table[cmd_id_uint] ))
-	subtree:add(pkt_len, pkt_len_uint)
+	subtree:add(magic, buf(0,4))
+	subtree:add(seq_id, buf(4,4))
+	subtree:add(cmd, buf(8,4)):append_text(string.format(' (%s)', cmd_table[cmd_id_uint] ))
+	subtree:add(pkt_len, buf(12,4))
 
 	-- handle a few special messages
 
