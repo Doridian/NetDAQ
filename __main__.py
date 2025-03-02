@@ -47,10 +47,16 @@ async def main():
                 triggers=[DAQConfigTrigger.INTERVAL],
                 interval_time=0.5,
                 analog_channels=[
-                    None, # Disable channel 1
-                    None, # Disable channel 2
-                    DAQAnalogVDCChannel( # Use channel 3
+                    # NOTE: Some instruments allow using "None" here to disable earlier channels.
+                    #       Some, however, do not. In this case an error will be raised from the set_config call
+                    DAQAnalogVDCChannel(
                         range=DAQVDCRange.VDC_3V,
+                    ),
+                    DAQAnalogVDCChannel(
+                        range=DAQVDCRange.VDC_50V,
+                    ),
+                    DAQAnalogVDCChannel(
+                        range=DAQVDCRange.VDC_AUTO,
                     ),
                 ],
                 computed_channels=[

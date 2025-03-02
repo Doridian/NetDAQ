@@ -33,10 +33,20 @@ HEADER_LEN = 16
 
 class ResponseErrorCodeException(Exception):
     def __init__(self, code: int, payload: bytes) -> None:
-        super().__init__(f"Response error: {code:08x}")
+        super().__init__(f"Response error: 0x{code:08x}")
         self.code = code
         self.payload = payload
 
+class PossiblyUnsupportedChannelLayoutException(Exception):
+    def __init__(self, parent: ResponseErrorCodeException) -> None:
+        super().__init__("Possibly invalid channel layout\n" +
+                            "You have provided a config that disables some channels but enables other,\n" +
+                            "later channels (i.e. disable channel 1 and set channel 2 to VDC).\n" +
+                            "This is known to cause some instruments (like yours, see the error) to reject the configuration.\n" +
+                            "Try submitting a configuration that uses channels sequentially, starting with 1.\n" +
+                            "Please report a bug if it still does not work even after fixing this warning.\n" +
+                            str(parent))
+        self.parent = parent
 
 @dataclass(frozen=True, kw_only=True)
 class DAQReading:
@@ -291,17 +301,27 @@ class NetDAQ:
 
         disabled_channel = DAQDisabledChannel()
 
+        has_none_channel_prefixes = False
+
+        had_none_channels = False
         aux_buffer = b""
         for chan in analog_channels:
             if chan is None:
                 chan = disabled_channel
+                had_none_channels = True
+            elif had_none_channels:
+                has_none_channel_prefixes = True
             res, equation = chan.encode_with_aux(len(aux_buffer))
             payload += res
             aux_buffer += equation
 
+        had_none_channels = False
         for chan in computed_channels:
             if chan is None:
                 chan = disabled_channel
+                had_none_channels = True
+            elif had_none_channels:
+                has_none_channel_prefixes = True
             res, equation = chan.encode_with_aux(len(aux_buffer))
             payload += res
             aux_buffer += equation
@@ -314,7 +334,12 @@ class NetDAQ:
         elif length_left > 0:
             payload += b"\x00" * length_left
 
-        _ = await self.send_rpc(DAQCommand.SET_CONFIG, payload=payload)
+        try:
+            _ = await self.send_rpc(DAQCommand.SET_CONFIG, payload=payload)
+        except ResponseErrorCodeException as e:
+            if has_none_channel_prefixes:
+                raise PossiblyUnsupportedChannelLayoutException(e)
+            raise
         await self.wait_for_idle()
 
     async def set_spy_enable(self, enabled: bool) -> None:
