@@ -4,6 +4,10 @@
 -- place or symlink in $HOME/.local/lib/wireshark/plugins
 -- to reload : Analyze->reload LUA plugins
 
+-- limitations :
+-- -hardcoded port
+-- some hardcoded command numbers  due to lua ignorance
+
 netdaq_protocol = Proto("netdaq", "Fluke NetDAQ protocol")
 
 -- all fields must be 'registered' even if they may be missing e.g. payload
@@ -40,18 +44,19 @@ function netdaq_protocol.dissector(buffer, pinfo, tree)
  length = buffer:len()
  if length < 16 then return end
 
+-- local magic = buffer(0,4):uint() -- "FELX" header
  local seq_id_uint = buffer(4,4):uint()
  local cmd_id_uint = buffer(8,4):uint()
+ local pkt_len_uint = buffer(12,4):uint()
 
  pinfo.cols.protocol = netdaq_protocol.name
  pinfo.cols.info = string.format('seq=%u, CMD=0x%02X (%s)', seq_id_uint, cmd_id_uint, cmd_table[cmd_id_uint] )
 
  local subtree = tree:add(netdaq_protocol, buffer(), "netdaq Protocol Data")
 
--- subtree:add(magic, buffer(0,4)) -- "FELX" header
  subtree:add(seq_id, seq_id_uint)
- subtree:add(cmd, cmd_id_uint)
- subtree:add(pkt_len, buffer(12,4))
+ subtree:add(cmd, cmd_id_uint):append_text(string.format(' (%s)', cmd_table[cmd_id_uint] ))
+ subtree:add(pkt_len, pkt_len_uint)
  if (length > 16) then
 	local payload_len = length - 16
 --	print(string.format('len: %u, PL_len: %u, ', length, payload_len))
