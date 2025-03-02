@@ -42,56 +42,56 @@ cmd_table = {
 
 
 function netdaq_protocol.dissector(buf, pinfo, tree)
- length = buf:len()
- if length < 16 then return end
+	length = buf:len()
+	if length < 16 then return end
 
- local cmd_id_uint = buf(8,4):uint()
- local pkt_len_uint = buf(12,4):uint()
+	local cmd_id_uint = buf(8,4):uint()
+	local pkt_len_uint = buf(12,4):uint()
 
---  if (length < pkt_len_uint) then
--- 	 pinfo.desegment_len = DESEGMENT_ONE_MORE_SEGMENT
--- 	 pinfo.desegment_offset = length
--- 	 return
---  end
+	--  if (length < pkt_len_uint) then
+	-- 	 pinfo.desegment_len = DESEGMENT_ONE_MORE_SEGMENT
+	-- 	 pinfo.desegment_offset = length
+	-- 	 return
+	--  end
 
--- validate "FELX" marker
- local magic = buf(0,4):uint()
- if (magic ~= 0x46454c58) then
-	 return
- end
+	-- validate "FELX" marker
+	local magic = buf(0,4):uint()
+	if (magic ~= 0x46454c58) then
+		return
+	end
 
- local seq_id_uint = buf(4,4):uint()
- pinfo.cols.protocol = netdaq_protocol.name
- pinfo.cols.info = string.format('seq=%u, CMD=0x%02X (%s)', seq_id_uint, cmd_id_uint, cmd_table[cmd_id_uint] )
+	local seq_id_uint = buf(4,4):uint()
+	pinfo.cols.protocol = netdaq_protocol.name
+	pinfo.cols.info = string.format('seq=%u, CMD=0x%02X (%s)', seq_id_uint, cmd_id_uint, cmd_table[cmd_id_uint] )
 
- local subtree = tree:add(netdaq_protocol, buf(), "netdaq Protocol Data")
+	local subtree = tree:add(netdaq_protocol, buf(), "netdaq Protocol Data")
 
- subtree:add(seq_id, seq_id_uint)
- subtree:add(cmd, cmd_id_uint):append_text(string.format(' (%s)', cmd_table[cmd_id_uint] ))
- subtree:add(pkt_len, pkt_len_uint)
+	subtree:add(seq_id, seq_id_uint)
+	subtree:add(cmd, cmd_id_uint):append_text(string.format(' (%s)', cmd_table[cmd_id_uint] ))
+	subtree:add(pkt_len, pkt_len_uint)
 
--- handle a few special messages
+	-- handle a few special messages
 
- if ((cmd_table[cmd_id_uint] == "ERROR") and (length == 20)) then
-	local err_code = buf(16,4):uint()
-	pinfo.cols.info = string.format('seq=%u, ERROR:0x%X', seq_id_uint, err_code)
-end
+	if ((cmd_table[cmd_id_uint] == "ERROR") and (length == 20)) then
+		local err_code = buf(16,4):uint()
+		pinfo.cols.info = string.format('seq=%u, ERROR:0x%X', seq_id_uint, err_code)
+	end
 
- if ((cmd_table[cmd_id_uint] == "PING") and (length == 20)) then
- -- XXX this is not strictly correct since some queries could have different meanings for the 4-byte response
- -- XXX but this would be fixed by processing packets as 'conversations' to group query+reply by sequence ID
-	pinfo.cols.info = string.format('seq=%u, STATUS:', seq_id_uint) .. buf:bytes(16,4):tohex(false, ' ')
-end
+	if ((cmd_table[cmd_id_uint] == "PING") and (length == 20)) then
+-- XXX this is not strictly correct since some queries could have different meanings for the 4-byte response
+-- XXX but this would be fixed by processing packets as 'conversations' to group query+reply by sequence ID
+		pinfo.cols.info = string.format('seq=%u, STATUS:', seq_id_uint) .. buf:bytes(16,4):tohex(false, ' ')
+	end
 
- 
--- handle optional payload
 
- if (length > 16) then
-	local payload_len = length - 16
---	print(string.format('len: %u, PL_len: %u, ', length, payload_len))
-	 subtree:add(payload, buf(16,payload_len))
-	 pinfo.cols.info:append(string.format(', pl_len=%u', payload_len))
- end
+	-- handle optional payload
+
+	if (length > 16) then
+		local payload_len = length - 16
+		--	print(string.format('len: %u, PL_len: %u, ', length, payload_len))
+		subtree:add(payload, buf(16,payload_len))
+		pinfo.cols.info:append(string.format(', pl_len=%u', payload_len))
+	end
 end
 
 local tcp_port = DissectorTable.get("tcp.port")
