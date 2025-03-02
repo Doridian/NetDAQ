@@ -42,7 +42,7 @@ class PossiblyUnsupportedChannelLayoutException(Exception):
         super().__init__("Possibly invalid channel layout\n" +
                             "You have provided a config that disables some channels but enables other,\n" +
                             "later channels (i.e. disable channel 1 and set channel 2 to VDC).\n" +
-                            "This is known to cause some instruments (like potentially yours) to reject the configuration.\n" +
+                            "This is known to cause some instruments (like probably yours) to reject the configuration.\n" +
                             "Try submitting a configuration that uses channels sequentially, starting with 1.\n" +
                             "Please report a bug if it still does not work even after fixing this warning.\n" +
                             str(parent))
