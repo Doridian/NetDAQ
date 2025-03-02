@@ -37,6 +37,7 @@ cmd_table = {
 	[0x0000007D] = "DISABLE_SPY",
 	[0x0000007F] = "GET_LC_VERSION",
 	[0x00000081] = "SET_CONFIG",
+	[0xffffffff] = "ERROR",
 }
 
 
@@ -57,6 +58,21 @@ function netdaq_protocol.dissector(buffer, pinfo, tree)
  subtree:add(seq_id, seq_id_uint)
  subtree:add(cmd, cmd_id_uint):append_text(string.format(' (%s)', cmd_table[cmd_id_uint] ))
  subtree:add(pkt_len, pkt_len_uint)
+
+-- handle a few special messages
+
+ if ((cmd_table[cmd_id_uint] == "ERROR") and (length == 20)) then
+	local err_code = buffer(16,4):uint()
+	pinfo.cols.info = string.format('seq=%u, ERROR:0x%X', seq_id_uint, err_code)
+end
+
+ if ((cmd_table[cmd_id_uint] == "PING") and (length == 20)) then
+	pinfo.cols.info = string.format('seq=%u, STATUS:', seq_id_uint) .. buffer:bytes(16,4):tohex(false, ' ')
+end
+
+ 
+-- handle optional payload
+
  if (length > 16) then
 	local payload_len = length - 16
 --	print(string.format('len: %u, PL_len: %u, ', length, payload_len))
