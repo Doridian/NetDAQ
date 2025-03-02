@@ -288,6 +288,8 @@ class NetDAQ:
             ]
         elif len(analog_channels) > max_analog_channels:
             raise ConfigError("Too many analog channels")
+        elif len(analog_channels) == 0:
+            raise ConfigError("No analog channels")
 
         max_computed_channels = self.computed_channels()
         computed_channels = config.computed_channels
