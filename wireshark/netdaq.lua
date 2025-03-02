@@ -16,9 +16,13 @@ netdaq_protocol.fields = { message_length, seq_id, cmd, pkt_len, payload}
 
 function netdaq_protocol.dissector(buffer, pinfo, tree)
  length = buffer:len()
- if length == 0 then return end
+ if length < 16 then return end
+
+ local seq_id_uint = buffer(4,4):uint()
+ local cmd_id_uint = buffer(8,4):uint()
 
  pinfo.cols.protocol = netdaq_protocol.name
+ pinfo.cols.info = string.format('seq=%u, CMD=0x%02X', seq_id_uint, cmd_id_uint )
 
  local subtree = tree:add(netdaq_protocol, buffer(), "netdaq Protocol Data")
 
@@ -30,6 +34,7 @@ function netdaq_protocol.dissector(buffer, pinfo, tree)
 	local payload_len = length - 16
 --	print(string.format('len: %u, PL_len: %u, ', length, payload_len))
 	 subtree:add(payload, buffer(16,payload_len))
+	 pinfo.cols.info:append(string.format(', pl_len=%u', payload_len))
  end
 end
 
