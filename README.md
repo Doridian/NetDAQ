@@ -6,6 +6,10 @@ This library is undergoing heavy development at the moment and ease of use will 
 
 For now, check out [`__main__.py`](__main__.py)
 
+## Reporting issues
+
+Whenever reporting an issue, please add the output of `python3 info.py INSTRUMENT_IP` to your issue.
+
 ## Instrument manuals
 
 User manual: [https://archive.org/details/FLUKE_2640A_2645A_User](https://archive.org/details/FLUKE_2640A_2645A_User)
