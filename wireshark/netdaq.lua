@@ -41,23 +41,47 @@ cmd_table = {
 }
 
 
+-- based on "fpm.lua" example from wireshark wiki, but with a (bold) assumption that there will not be
+-- multiple netdaq packets in a same TCP frame.
 function netdaq_protocol.dissector(buf, pinfo, tree)
+	tvbs = {}
+
+	local pktlen = buf:len()
+
+	local result = dis(buf, pinfo, tree)
+	if result > 0 then
+		return result
+	elseif result == 0 then
+		-- some error, pass up
+		return 0
+	else
+		-- need more
+		pinfo.desegment_len = DESEGMENT_ONE_MORE_SEGMENT
+	end
+
+	-- pinfo.desegment_offset = length
+end
+
+
+-- local function to dissect reassembled netdaq packet.
+-- return (-missing) if we need more data
+-- return (len) if succesfully parsed
+-- return 0 if error
+dis = function (buf, pinfo, tree)
 	length = buf:len()
-	if length < 16 then return end
+	if length < 16 then return 0 end
 
 	local cmd_id_uint = buf(8,4):uint()
 	local pkt_len_uint = buf(12,4):uint()
 
-	--  if (length < pkt_len_uint) then
-	-- 	 pinfo.desegment_len = DESEGMENT_ONE_MORE_SEGMENT
-	-- 	 pinfo.desegment_offset = length
-	-- 	 return
-	--  end
+	if (length < pkt_len_uint) then
+	     return (length - pkt_len_uint)
+	end
 
 	-- validate "FELX" marker
 	local magic = buf(0,4):uint()
 	if (magic ~= 0x46454c58) then
-		return
+		return 0
 	end
 
 	local seq_id_uint = buf(4,4):uint()
@@ -92,6 +116,7 @@ function netdaq_protocol.dissector(buf, pinfo, tree)
 		subtree:add(payload, buf(16,payload_len))
 		pinfo.cols.info:append(string.format(', pl_len=%u', payload_len))
 	end
+	return length
 end
 
 local tcp_port = DissectorTable.get("tcp.port")
