@@ -10,6 +10,7 @@ from asyncio import (
     Task,
     CancelledError,
 )
+import socket
 from traceback import print_exc
 from .config.base import ConfigError
 from .config.enums import DAQCommand
@@ -176,6 +177,10 @@ class NetDAQ:
         await self.close()
 
         reader, writer = await open_connection(self._ip, self._port)
+
+        sock: socket.socket = writer.get_extra_info("socket")
+        sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+
         self._sock_writer = writer
         self._reader_coroutine = get_event_loop().create_task(
             self._reader_coroutine_func(sock_reader=reader)
