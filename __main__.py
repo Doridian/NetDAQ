@@ -77,4 +77,4 @@ async def main():
         print("Done!")
 
 
-run(main3())
+run(main())
