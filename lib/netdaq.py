@@ -235,6 +235,11 @@ class NetDAQ:
     async def ping(self) -> None:
         _ = await self.send_rpc(DAQCommand.PING)
 
+    async def selftest(self) -> int:
+        _ = await self.send_rpc(DAQCommand.SELFTEST_BEGIN)
+        await self.wait_for_idle()
+        return parse_int(await self.send_rpc(DAQCommand.SELFTEST_RESULTS))
+
     async def reset_totalizer(self) -> None:
         _ = await self.send_rpc(DAQCommand.RESET_TOTALIZER)
 
