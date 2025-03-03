@@ -258,6 +258,10 @@ class NetDAQ:
                 break
             await sleep(0.01)
 
+    async def get_time(self) -> datetime:
+        devtime = await self.send_rpc(DAQCommand.GET_TIME)
+        return parse_time(devtime)
+
     async def set_time(self, time: datetime | None = None) -> None:
         if not time:
             time = datetime.now()
