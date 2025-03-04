@@ -1,7 +1,7 @@
 # Protocol
 
 ## Packet structure (both request and response)
-- 0x46 0x45 0x4c 0x58
+- 0x46 0x45 0x4c 0x58 ("FELX")
 - 4-byte sequence ID starting at anything
 - 4-byte command ID
 - 4-byte whole packet length
@@ -13,34 +13,81 @@
 - All packets are specified MSB-first / BIG endian
 
 ## Remaining unknowns
-- Any command IDs except the ones documented above
+- Any command IDs except the ones documented below
 - Everything labelled "UNKNOWN" in this document, a lot of these just seem to be unused/padding or constant parts of packets
 
 ## Command IDs
 - 0x00000000 = Ping, empty request, empty response
 - 0x00000001 = Connection close, empty request, empty response
 - 0x00000002 = Status query, empty request, response [0x90/0x84/0x00 (0x90 = initializing, 0x84 = configuring, 0x00 = idle), 0x00, 0x00, 0x00]
+- 0x00000003 = Reset, empty request, empty response
+- 0x00000004 = get internal errors ? "flxIError" , empty request, 4 bytes response (UNKNOWN)
 - 0x00000064 = Request readings, request 4-byte integer maximum readings to return (just use 255), response variable length
-- 0x00000067 = START command, request 16-byte UNKNOWN (just send all nullbytes), empty response
+- 0x00000065 = scan_getlast, empty request, response is the last set of readings (same format)
+- 0x00000066 = scans_trigger, request 4 bytes UNKNOWN, empty resp
+- 0x00000067 = START command, request 16-byte "start_request" struct (see below), empty response
 - 0x00000068 = STOP command, empty request, empty response
-- 0x0000006A = Set time, request time [Hours; Minutes; Seconds; Month; 0x08; Day; 2-digit-Year, 0x00], milliseconds 4-byte, empty response
+- 0x00000069 = Get time, empty request, response : netdaq_time (see below), 12 bytes
+- 0x0000006A = Set time, request: netdaq_time (see below), 12 bytes, empty response
+- 0x0000006D = DIO_GET, empty request, response 4-byte UNKNOWN
 - 0x0000006F = Query spy channel, request 4-byte channel, response 4-byte float value
+- 0x00000070 = totalizer_get, empty request, 4-byte response UNKNOWN
 - 0x00000071 = Clear totalizer, empty request, empty response
 - 0x00000072 = Get version info, empty request, response zero-terminated strings [Model name, DMM version, BM version, FA version, BA version]
+- 0x00000073 = selftest_begin, empty request and response
+- 0x00000074 = selftest_results, empty request, 4-byte response UNKNOWN
 - 0x00000075 = Set monitor channel, request 4-byte channel number, empty response
 - 0x00000076 = Turn off monitor channel, empty request, empty response
 - 0x00000077 = Get base channel, empty request, response 4-byte base channel
+- 0x00000078 = flxTempBlock, empty request, response float4 ? UNKNOWN
+- 0x00000079 = flxTempLin, request float4 ?, response float4 ? UNKNOWN
+- 0x0000007a = flxTempRefAdj, request 8 bytes (two float4 ?), response float4 ? UNKNOWN
+- 0x0000007b = scans_clear, request 4 bytes UNKNOWN, empty response
 - 0x0000007C = Enable spy mode, empty request, empty response
 - 0x0000007D = Disable spy mode, empty request, empty response
-- 0x0000007F = Get LC version, empty request, response zero-terminated string LC version
-- 0x00000081 = Configuration command, request see below, empty response
+- 0x0000007e = scans_count, empty request, response 4 bytes UNKNOWN
+- 0x0000007F = Get LC version (flxLoggerCompatibility), empty request, response zero-terminated string LC version
+- 0x00000080 = Get config block, empty request, response see below
+- 0x00000081 = Set config block, request see below, empty response
 
 ## Various command payloads
 
-- 0x00000067 (payload seems constant)
+### START (flxScansEnable, flxScansEnableAt), 0x67
     ```
     00000CB8  00 00 00 00 ac f4 19 00  58 10 46 00 00 00 00 0d   ........ X.F.....
     ```
+First byte is the bool flag "delayed" ; if 0 : scan begins now (rest of the struct is ignored), if 1, scan begins at specified time (shortened version of struct netdaq_time)
+```
+struct start_request {
+	u8 delayed_flag;	// 1 if delayed
+	u8 padding[3];	//set to 0
+
+	u8 hours;
+	u8 minutes;
+	u8 sec;
+	u8 month;	//1 to 12
+	u8 unused_4;	// DLL leaves this uninitialized
+	u8 day;
+	u8 year;	// 2-digit == (year % 100)
+	u8 unused_7;
+}
+```
+	
+### Get/Set time (0x69, 0x6A)
+This uses the full netdaq_time struct (12 bytes) :
+```
+struct netdaq_time {
+	u8 hours;
+	u8 minutes;
+	u8 sec;
+	u8 month;	//1 to 12
+	u8 unused_4;	// DLL leaves this uninitialized
+	u8 day;
+	u8 year;	// 2-digit == (year % 100)
+	u8 unused_7;
+	u32 ms;
+}
+```
 
 ### Readings command payload (0x00000064)
 
