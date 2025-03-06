@@ -1,0 +1,14 @@
+[project]
+name = "netdaq"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "pyright>=1.1.396",
+]
+
+[tool.pyright]
+venvPath = "."
+venv = ".venv"
+
