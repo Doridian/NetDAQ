@@ -4,7 +4,7 @@
 
 This library is undergoing heavy development at the moment and ease of use will be a focus once the whole protocol has been implemented
 
-For now, check out [`__main__.py`](__main__.py). For running, this requires the instrument's IP as the first argument.
+For now, check out [`main.py`](main.py). For running, this requires the instrument's IP as the first argument.
 
 ## Reporting issues
 
