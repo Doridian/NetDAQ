@@ -9,6 +9,7 @@ from lib.config.equation import DAQEquation
 from lib.config.equation_compiler import DAQEQuationCompiler
 from sys import argv
 from asyncio import run, sleep
+from datetime import datetime, timedelta
 
 
 async def main3():
@@ -68,8 +69,12 @@ async def main():
         )
         print("Config set!")
 
+
+        date = datetime.now()
+        date += timedelta(seconds=10)
+
         await instrument.reset_totalizer()
-        await instrument.start()
+        await instrument.start(date)
         await instrument.set_monitor_channel(1)
 
         while True:
