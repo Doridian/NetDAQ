@@ -56,7 +56,7 @@ class DAQVersionInfo:
     outguard_bootmon: str
     inguard_main: str
     inguard_boot: str
-    fpga_main: str
+    fpga_logic: str
 
 @dataclass(frozen=True, kw_only=True)
 class DAQReading:
@@ -257,7 +257,7 @@ class NetDAQ:
             outguard_bootmon=self._nullterm_string(data[16:]),
             inguard_main=self._nullterm_string(data[24:]),
             inguard_boot=self._nullterm_string(data[32:]),
-            fpga_main=self._nullterm_string(lc_data),
+            fpga_logic=self._nullterm_string(lc_data),
         )
 
     async def wait_for_idle(self) -> None:
