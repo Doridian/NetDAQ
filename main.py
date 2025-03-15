@@ -36,8 +36,6 @@ async def main():
         await instrument.stop()
         await instrument.set_monitor_channel(0)
 
-        print("LC version", await instrument.get_lc_version())
-
         await instrument.set_time()
         print("Time set!")
 

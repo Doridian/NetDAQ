@@ -50,6 +50,15 @@ class PossiblyUnsupportedChannelLayoutException(Exception):
         self.parent = parent
 
 @dataclass(frozen=True, kw_only=True)
+class DAQVersionInfo:
+    model: str
+    outguard_main: str
+    outguard_bootmon: str
+    inguard_main: str
+    inguard_boot: str
+    fpga_main: str
+
+@dataclass(frozen=True, kw_only=True)
 class DAQReading:
     time: datetime
     dio: int  # short
@@ -232,24 +241,24 @@ class NetDAQ:
     async def get_base_channel(self) -> int:
         return parse_int(await self.send_rpc(DAQCommand.GET_BASE_CHANNEL))
 
-    async def get_version_info(
-        self, command: DAQCommand = DAQCommand.GET_VERSION_INFO
-    ) -> list[bytes]:
-        data = await self.send_rpc(command)
-        blobs: list[bytes] = []
-        current: list[int] = []
-        for i in data:
-            if i == 0x00:
-                blobs.append(bytes(current))
-                current = []
-                continue
-            current.append(i)
-        if current:
-            blobs.append(bytes(current))
-        return blobs
+    def _nullterm_string(self, val: bytes) -> str:
+        nullchar = val.find(b"\x00")
+        if nullchar != -1:
+            val = val[0:nullchar]
+        return val.decode("ascii")
 
-    async def get_lc_version(self) -> list[bytes]:
-        return await self.get_version_info(command=DAQCommand.GET_LC_VERSION)
+    async def get_version_info(self) -> DAQVersionInfo:
+        data = await self.send_rpc(DAQCommand.GET_VERSION_INFO)
+        lc_data = await self.send_rpc(DAQCommand.GET_LC_VERSION)
+
+        return DAQVersionInfo(
+            model=self._nullterm_string(data[0:]),
+            outguard_main=self._nullterm_string(data[8:]),
+            outguard_bootmon=self._nullterm_string(data[16:]),
+            inguard_main=self._nullterm_string(data[24:]),
+            inguard_boot=self._nullterm_string(data[32:]),
+            fpga_main=self._nullterm_string(lc_data),
+        )
 
     async def wait_for_idle(self) -> None:
         while True:

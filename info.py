@@ -18,7 +18,6 @@ async def main():
 
         print("Base channel:", await instrument.get_base_channel())
         print("Version info:", await instrument.get_version_info())
-        print("LC version:", await instrument.get_lc_version())
     finally:
         print("====== END INFO ======")
 
