@@ -75,7 +75,7 @@ class DAQReading:
         return self.alarm1_bitmask & (1 << index) != 0
 
     def is_channel_alarm2(self, index: int) -> bool:
-        return self.alarm1_bitmask & (1 << index) != 0
+        return self.alarm2_bitmask & (1 << index) != 0
 
 
 @dataclass(frozen=True, kw_only=True)
