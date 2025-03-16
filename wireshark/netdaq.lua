@@ -16,8 +16,9 @@ seq_id = ProtoField.uint32("netdaq.seq_id" , "seq_id" )
 cmd = ProtoField.uint32("netdaq.cmd" , "cmd" , base.HEX)
 pkt_len = ProtoField.uint32("netdaq.pkt_len" , "pkt_len" , base.DEC)
 payload = ProtoField.bytes("netdaq.payload", "payload")
+delay_start = ProtoField.bytes("netdaq.delay_start", "delay_start")
 
-netdaq_protocol.fields = { magic, seq_id, cmd, pkt_len, payload}
+netdaq_protocol.fields = { magic, seq_id, cmd, pkt_len, payload, delay_start }
 
 
 cmd_table = {
@@ -116,24 +117,18 @@ dis = function (buf, pinfo, tree)
 	if ((cmd_table[cmd_id_uint] == "ERROR") and (payload_len == 4)) then
 		local err_code = buf(16,4):uint()
 		pinfo.cols.info = string.format('seq=%u, ERROR:0x%X', seq_id_uint, err_code)
-	end
-
-	if ((cmd_table[cmd_id_uint] == "START") and (payload_len == 16)) then
+	elseif ((cmd_table[cmd_id_uint] == "START") and (payload_len == 16)) then
 		dis_start(buf(16, payload_len), pinfo, subtree, seq_id_uint) 
-	end
-
-	if ((cmd_table[cmd_id_uint] == "PING") and (payload_len == 4)) then
+	elseif ((cmd_table[cmd_id_uint] == "PING") and (payload_len == 4)) then
 -- XXX this is not strictly correct since some queries could have different meanings for the 4-byte response
 -- XXX but this would be fixed by processing packets as 'conversations' to group query+reply by sequence ID
 		pinfo.cols.info = string.format('seq=%u, STATUS:', seq_id_uint) .. buf:bytes(16,4):tohex(false, ' ')
-	end
-
 
 	-- handle optional payload. Two cases :
 	-- 	- there is 'normal' payload data accounted for by header pkt_len field
 	--	- there is 'extra' payload data, possibly another netdaq frame (unsupported right now)
 	-- not sure if second case can actually happen.
-	if (payload_len > 0) then
+	elseif (payload_len > 0) then
 		--	print(string.format('len: %u, PL_len: %u, ', length, payload_len))
 		subtree:add(payload, buf(16,payload_len))
 		pinfo.cols.info:append(string.format(', pl_len=%u', payload_len))
@@ -163,6 +158,7 @@ dis_start = function (request, pinfo, subtree, seqno)
 	delayed=request(0,4):uint()
 	if (delayed == 1) then
 		pinfo.cols.info = string.format('seq=%u, DELAYED START @', seqno)
+		subtree:add(delay_start, request(4,-1))
 		parse_timedelay(request(4,-1), pinfo, subtree)
 	elseif (delayed == 0) then
 		pinfo.cols.info = string.format('seq=%u, START', seqno)
