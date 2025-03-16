@@ -145,11 +145,25 @@ dis = function (buf, pinfo, tree)
 	return length
 end
 
+
+-- parse start-time struct
+parse_timedelay = function (td, pinfo, subtree)
+	local h = td(0,1):uint()
+	local m = td(1,1):uint()
+	local s = td(2,1):uint()
+	local mo = td(3,1):uint()
+	local d = td(5,1):uint()
+	local y = td(6,1):uint()
+	pinfo.cols.info:append(string.format('%u:%u:%u on %u-%u-%u', h,m,s,y,m,d))
+end
+
+
 -- parse Start request packet
 dis_start = function (request, pinfo, subtree, seqno)
 	delayed=request(0,4):uint()
 	if (delayed == 1) then
-		pinfo.cols.info = string.format('seq=%u, DELAYED START @ (TBD)', seqno)
+		pinfo.cols.info = string.format('seq=%u, DELAYED START @', seqno)
+		parse_timedelay(request(4,-1), pinfo, subtree)
 	elseif (delayed == 0) then
 		pinfo.cols.info = string.format('seq=%u, START', seqno)
 	else
