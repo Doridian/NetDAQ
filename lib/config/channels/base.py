@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from ..enums import DAQConfigAlarm
-from ...utils.encoding import make_int, make_float, make_optional_indexed_bit, NULL_INT
+from ...utils.encoding import make_int, make_float, make_optional_indexed_bit, ZERO_INT
 from typing import override
 
 
@@ -54,11 +54,11 @@ class DAQDisabledChannel(DAQChannel):
     @override
     def encode(self) -> bytes:
         return (
-            NULL_INT
-            + NULL_INT
-            + NULL_INT
-            + NULL_INT
-            + NULL_INT
+            ZERO_INT
+            + ZERO_INT
+            + ZERO_INT
+            + ZERO_INT
+            + ZERO_INT
             + self.encode_common_trailer()
         )
 

@@ -25,7 +25,7 @@ from .utils.encoding import (
     parse_time,
     make_timedelta,
     INT_LEN,
-    NULL_INT,
+    ZERO_INT,
 )
 
 CHANNEL_PAYLOAD_LENGTH = 2492
@@ -421,11 +421,9 @@ class NetDAQ:
 
     async def start(self, start: datetime | None = None) -> None:
         if start:
-            packet = bytes([
-                0x00, 0x00, 0x00, 0x01,
-            ]) + make_time(start) + NULL_INT
+            packet = make_int(1) + make_time(start) + ZERO_INT
         else:
-            packet = 4 * NULL_INT
+            packet = 4 * ZERO_INT
 
         _ = await self.send_rpc(DAQCommand.START, payload=packet)
 

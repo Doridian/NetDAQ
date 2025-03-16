@@ -1,6 +1,6 @@
 from .base import DAQComputedChannel
 from ..enums import DAQComputedMeasurementType
-from ...utils.encoding import make_int, NULL_INT
+from ...utils.encoding import make_int, ZERO_INT
 from ..equation import DAQEquation
 from dataclasses import dataclass
 from typing import override
@@ -14,9 +14,9 @@ class DAQComputedAverageChannel(DAQComputedChannel):
     def encode(self) -> bytes:
         return (
             make_int(DAQComputedMeasurementType.Average.value)
-            + NULL_INT
-            + NULL_INT
-            + NULL_INT
+            + ZERO_INT
+            + ZERO_INT
+            + ZERO_INT
             + make_int(self.channel_bitmask)
             + self.encode_common_trailer()
         )
@@ -31,9 +31,9 @@ class DAQComputedAminusBChannel(DAQComputedChannel):
     def encode(self) -> bytes:
         return (
             make_int(DAQComputedMeasurementType.AminusB.value)
-            + NULL_INT
+            + ZERO_INT
             + make_int(self.channel_a)
-            + NULL_INT
+            + ZERO_INT
             + make_int(self.channel_b)
             + self.encode_common_trailer()
         )
@@ -48,9 +48,9 @@ class DAQComputedAminusAvgChannel(DAQComputedChannel):
     def encode(self) -> bytes:
         return (
             make_int(DAQComputedMeasurementType.AminusB.value)
-            + NULL_INT
+            + ZERO_INT
             + make_int(self.channel_a)
-            + NULL_INT
+            + ZERO_INT
             + make_int(self.channel_bitmask)
             + self.encode_common_trailer()
         )
@@ -64,9 +64,9 @@ class DAQComputedEquationChannel(DAQComputedChannel):
     def encode_with_aux(self, aux_offset: int) -> tuple[bytes, bytes]:
         payload = (
             make_int(DAQComputedMeasurementType.Equation.value)
-            + NULL_INT
-            + NULL_INT
-            + NULL_INT
+            + ZERO_INT
+            + ZERO_INT
+            + ZERO_INT
             + make_int(aux_offset)
             + self.encode_common_trailer()
         )

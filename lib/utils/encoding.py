@@ -2,7 +2,7 @@ from struct import pack, unpack
 from datetime import datetime, timedelta
 
 INT_LEN = 4
-NULL_INT = b"\x00" * INT_LEN
+ZERO_INT = b"\x00" * INT_LEN
 
 
 def parse_int(data: bytes, *, len: int = INT_LEN) -> int:
@@ -81,5 +81,5 @@ def make_timedelta(time: timedelta) -> bytes:
 
 def make_optional_indexed_bit(bit: int | None) -> bytes:
     if bit is None:
-        return NULL_INT
+        return ZERO_INT
     return make_int(1 << bit)

@@ -8,7 +8,7 @@ from ..enums import (
     DAQThermocoupleRange,
     DAQRTDRange,
 )
-from ...utils.encoding import make_int, make_float, NULL_INT
+from ...utils.encoding import make_int, make_float, ZERO_INT
 from ..base import ConfigError
 from .base import DAQAnalogChannel
 from typing import override
@@ -36,8 +36,8 @@ class DAQAnalogOhmsChannel(DAQAnalogChannel):
         return (
             make_int(DAQAnalogMeasuremenType.Ohms.value)
             + make_int(self.range.value)
-            + NULL_INT
-            + NULL_INT
+            + ZERO_INT
+            + ZERO_INT
             + make_int(extra_bits)
             + self.encode_common_trailer()
         )
@@ -52,9 +52,9 @@ class DAQAnalogVDCChannel(DAQAnalogChannel):
         return (
             make_int(DAQAnalogMeasuremenType.VDC.value)
             + make_int(self.range.value)
-            + NULL_INT
-            + NULL_INT
-            + NULL_INT
+            + ZERO_INT
+            + ZERO_INT
+            + ZERO_INT
             + self.encode_common_trailer()
         )
 
@@ -68,9 +68,9 @@ class DAQAnalogVACChannel(DAQAnalogChannel):
         return (
             make_int(DAQAnalogMeasuremenType.VAC.value)
             + make_int(self.range.value)
-            + NULL_INT
-            + NULL_INT
-            + NULL_INT
+            + ZERO_INT
+            + ZERO_INT
+            + ZERO_INT
             + self.encode_common_trailer()
         )
 
@@ -81,10 +81,10 @@ class DAQAnalogFrequencyChannel(DAQAnalogChannel):
     def encode(self) -> bytes:
         return (
             make_int(DAQAnalogMeasuremenType.Frequency.value)
-            + NULL_INT
-            + NULL_INT
-            + NULL_INT
-            + NULL_INT
+            + ZERO_INT
+            + ZERO_INT
+            + ZERO_INT
+            + ZERO_INT
             + self.encode_common_trailer()
         )
 
@@ -134,8 +134,8 @@ class DAQAnalogThermocoupleChannel(DAQAnalogChannel):
         return (
             make_int(DAQAnalogMeasuremenType.Thermocouple.value)
             + make_int(self.range.value)
-            + NULL_INT
-            + NULL_INT
+            + ZERO_INT
+            + ZERO_INT
             + make_int(extra_bits)
             + self.encode_common_trailer()
         )
@@ -173,7 +173,7 @@ class DAQAnalogCurrentChannel(DAQAnalogChannel):
             make_int(DAQAnalogMeasuremenType.Current.value)
             + make_int(self.range.value)
             + make_float(self.shunt_resistance)
-            + NULL_INT
+            + ZERO_INT
             + make_int(extra_bits)
             + self.encode_common_trailer()
         )
