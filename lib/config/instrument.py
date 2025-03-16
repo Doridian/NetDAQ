@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+from datetime import timedelta
 from .enums import DAQConfigSpeed, DAQConfigTrigger, DAQConfigBits
 from .channels.base import DAQComputedChannel, DAQAnalogChannel
 
@@ -14,8 +15,10 @@ class DAQConfiguration:
         default_factory=lambda: [DAQConfigTrigger.INTERVAL]
     )
 
-    interval_time: float = 1.0
-    alarm_time: float = 1.0
+    interval_time: timedelta = timedelta(seconds=1)
+    alarm_time: timedelta = timedelta(seconds=1)
+    unknown3_time: timedelta = timedelta(milliseconds=100)
+
     analog_channels: list[DAQAnalogChannel | None] = field(default_factory=lambda: [])
     computed_channels: list[DAQComputedChannel | None] = field(default_factory=lambda: [])
 

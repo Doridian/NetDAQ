@@ -1,5 +1,5 @@
 from struct import pack, unpack
-from datetime import datetime
+from datetime import datetime, timedelta
 
 INT_LEN = 4
 NULL_INT = b"\x00" * INT_LEN
@@ -58,13 +58,26 @@ def make_time(time: datetime) -> bytes:
             time.minute,
             time.second,
             time.month,
-            0x08,  # unknown value
+            0x00, # unused / unitialized
             time.day,
             time.year % 100,
-            0x00,  # unknown value
+            0x00, # unused / unitialized
         ]
     )
 
+
+def make_timedelta(time: timedelta) -> bytes:
+    total_seconds = int(time.total_seconds())
+    seconds = total_seconds % 60
+    minutes = (total_seconds // 60) % 60
+    hours = (total_seconds // 3600)
+
+    return (
+        make_int(hours) +
+        make_int(minutes) +
+        make_int(seconds) +
+        make_int(time.microseconds // 1000)
+    )
 
 def make_optional_indexed_bit(bit: int | None) -> bytes:
     if bit is None:

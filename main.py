@@ -44,7 +44,7 @@ async def main():
         await instrument.set_config(
             DAQConfiguration(
                 triggers=[DAQConfigTrigger.INTERVAL],
-                interval_time=0.5,
+                interval_time=timedelta(milliseconds=500),
                 analog_channels=[
                     # NOTE: Some instruments allow using "None" here to disable earlier channels.
                     #       Some, however, do not. In this case an error will be raised from the set_config call
@@ -52,7 +52,7 @@ async def main():
                         range=DAQVDCRange.VDC_3V,
                     ),
                     DAQAnalogVDCChannel(
-                        range=DAQVDCRange.VDC_50V,
+                        range=DAQVDCRange.VDC_30V,
                     ),
                     DAQAnalogVDCChannel(
                         range=DAQVDCRange.VDC_AUTO,
@@ -66,7 +66,6 @@ async def main():
             )
         )
         print("Config set!")
-
 
         date = datetime.now()
         date += timedelta(seconds=10)

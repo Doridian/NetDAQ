@@ -23,6 +23,7 @@ from .utils.encoding import (
     parse_short,
     make_time,
     parse_time,
+    make_timedelta,
     INT_LEN,
     NULL_INT,
 )
@@ -288,18 +289,9 @@ class NetDAQ:
     async def set_config(self, config: DAQConfiguration) -> None:
         payload = (
             make_int(config.bits())
-            + NULL_INT
-            + NULL_INT
-            + make_int(int(config.interval_time))
-            + make_int(int(config.interval_time * 1000) % 1000)
-            + NULL_INT
-            + NULL_INT
-            + make_int(int(config.alarm_time))
-            + make_int(int(config.alarm_time * 1000) % 1000)
-            + NULL_INT
-            + NULL_INT
-            + NULL_INT
-            + b"\x00\x00\x00\x64"
+            + make_timedelta(config.interval_time)
+            + make_timedelta(config.alarm_time)
+            + make_timedelta(config.unknown3_time)
         )
 
         max_analog_channels = self.analog_channels()
@@ -434,8 +426,6 @@ class NetDAQ:
             ]) + make_time(start) + NULL_INT
         else:
             packet = 4 * NULL_INT
-
-        print(packet)
 
         _ = await self.send_rpc(DAQCommand.START, payload=packet)
 
