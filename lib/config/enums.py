@@ -91,7 +91,8 @@ class DAQVDCRange(Enum):
     VDC_3V = 0x2308
     VDC_30V = 0x2410
     VDC_AUTO = 0x2520
-    VDC_50V = 0x2640
+    VDC_50V = 0x2640    # fluke 2645 only
+    VDC_150_300V = 0x2740   # fluke 2640 only
 
 
 class DAQVACRange(Enum):
@@ -99,6 +100,7 @@ class DAQVACRange(Enum):
     VAC_3V = 0x3102
     VAC_30V = 0x3204
     VAC_AUTO = 0x3308
+    VAC_150V = 0x3510   # fluke 2640 only
 
 
 class DAQOhmsRange(Enum):
