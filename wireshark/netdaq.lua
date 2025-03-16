@@ -17,8 +17,9 @@ cmd = ProtoField.uint32("netdaq.cmd" , "cmd" , base.HEX)
 pkt_len = ProtoField.uint32("netdaq.pkt_len" , "pkt_len" , base.DEC)
 payload = ProtoField.bytes("netdaq.payload", "payload")
 delay_start = ProtoField.bytes("netdaq.delay_start", "delay_start")
+interval = ProtoField.bytes("netdaq.interval", "interval")
 
-netdaq_protocol.fields = { magic, seq_id, cmd, pkt_len, payload, delay_start }
+netdaq_protocol.fields = { magic, seq_id, cmd, pkt_len, payload, delay_start, interval }
 
 
 cmd_table = {
@@ -123,6 +124,8 @@ dis = function (buf, pinfo, tree)
 -- XXX this is not strictly correct since some queries could have different meanings for the 4-byte response
 -- XXX but this would be fixed by processing packets as 'conversations' to group query+reply by sequence ID
 		pinfo.cols.info = string.format('seq=%u, STATUS:', seq_id_uint) .. buf:bytes(16,4):tohex(false, ' ')
+	elseif ((cmd_table[cmd_id_uint] == "SET_CONFIG") and (payload_len == 2492)) then
+		parse_configblock(buf(16, payload_len), pinfo, subtree)
 
 	-- handle optional payload. Two cases :
 	-- 	- there is 'normal' payload data accounted for by header pkt_len field
@@ -152,6 +155,22 @@ parse_timedelay = function (td, pinfo, subtree)
 	pinfo.cols.info:append(string.format('%u:%u:%u on %u-%u-%u', h,m,s,y,m,d))
 end
 
+-- parse 'interval' field of SET/GET_CONFIG blocks
+parse_interval = function (intv, subtree)
+	local h = intv(0,4):uint()
+	local m = intv(4,4):uint()
+	local s = intv(8,4):uint()
+	local ms = intv(12,4):uint()
+	subtree:add(interval, intv(0,16)):set_text(string.format('interval: %02u:%02u:%02u.%02u', h,m,s,ms))
+end
+
+
+-- parse 2492-byte config block of SET/GET_CONFIG
+parse_configblock = function (cfg, pinfo, subtree)
+	local flags = cfg(0,4):uint()
+
+	parse_interval(cfg(4,16), subtree)
+end
 
 -- parse Start request packet
 dis_start = function (request, pinfo, subtree, seqno)
