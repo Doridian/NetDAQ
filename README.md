@@ -24,6 +24,6 @@ See [`PROTOCOL.md`](PROTOCOL.md) for those efforts
 
 ## NetDAQ logger demo
 
-[http://download.caltech.se/download/fluke/DAQ/FlukeNetDAQ.exe](http://download.caltech.se/download/fluke/DAQ/FlukeNetDAQ.exe)
+[https://archive.org/details/fluke-netdaq-demo](https://archive.org/details/fluke-netdaq-demo)
 
 **The installer (or parts of it) require 16-bit mode (ex. a Windows XP VM)**. However, once the program is installed, the folder in `Program Files` can just be copied to a Windows 11 machine and it will run just fine.
