@@ -21,18 +21,42 @@ interval = ProtoField.bytes("netdaq.interval", "interval")
 
 netdaq_protocol.fields = { magic, seq_id, cmd, pkt_len, payload, delay_start, interval }
 
+-- can we do a generic u32 field ?
+netdaq_protocol.fields.u32 = ProtoField.uint32("netdaq.u32", "generic u32", base.HEX)
+
+-- ****************************************
+-- a few command-specific dissectors
+-- the first arg is the payload, not the whole packet
 
 dis_error = function (e, pinfo, subtree)
 	local err_code = e(0,4):uint()
-	pinfo.cols.info:append(string.format(', ERROR:0x%X', err_code))
+	pinfo.cols.info:append(string.format(':0x%X', err_code))
 end
 
 
 -- parse 2492-byte config block of SET/GET_CONFIG
 dis_cfg = function (cfg, pinfo, subtree)
-local flags = cfg(0,4):uint()
-
-	parse_interval(cfg(4,16), subtree, 'interval: ')
+	local flags = cfg(0,4):uint()
+	cfg_t = subtree:add(netdaq_protocol, cfg, "Config block")
+	-- XXX ugly. Is this the best way to add generic u32 fields ?
+	cfg_t:add(netdaq_protocol.fields.u32, cfg(0,4)):set_text(string.format('flags: %08X', flags))
+	for i=0,2 do
+		parse_interval(cfg(4+(16*i),16), cfg_t, string.format('interval %u: ', i))
+	end
+	for c=0,30 do
+		chanblock = cfg(0x34 + (c*0x30), 0x30)
+		local mode=chanblock(0,4):uint()
+		if mode == 0 then
+			cfg_t:add(netdaq_protocol, chanblock, string.format("Chan %u (disabled)", c + 1))
+		else
+			local cb_t = cfg_t:add(netdaq_protocol, chanblock, string.format("Chan %u", c + 1))
+			local range=chanblock(4,4):uint()
+			local extra=chanblock(16,4):uint()
+			cb_t:add(netdaq_protocol.fields.u32, chanblock(0,4)):set_text(string.format('mode: %08X', mode))
+			cb_t:add(netdaq_protocol.fields.u32, chanblock(4,4)):set_text(string.format('range: %08X', range))
+			cb_t:add(netdaq_protocol.fields.u32, chanblock(16,4)):set_text(string.format('extra_bits: %08X', extra))
+		end
+	end
 end
 
 
@@ -52,12 +76,15 @@ end
 
 -- GET/SET_TIME
 dis_timedate = function (request, pinfo, subtree)
-	pinfo.cols.info:append(string.format(", TIME="))
+	pinfo.cols.info:append(", TIME=")
 	subtree:add(delay_start, request(4,-1))
 	parse_timedelay(request, pinfo, subtree)
 end
 
 
+-- ****************************************
+-- table of command IDs, name and optional handler + payload size
+--
 cmd_table = {
 	[0x00000000] = {name="PING"},
 	[0x00000001] = {name="CLOSE"},
@@ -96,6 +123,8 @@ cmd_table = {
 }
 
 
+-- ****************************************
+-- 'core' of the NETDAQ dissector
 -- based on "fpm.lua" example from wireshark wiki, but with a (bold) assumption that there will not be
 -- multiple netdaq packets in a same TCP frame.
 function netdaq_protocol.dissector(buf, pinfo, tree)
@@ -171,12 +200,11 @@ dis = function (buf, pinfo, tree)
 		pinfo.cols.info:append(string.format(', STATUS:', seq_id_uint) .. buf:bytes(16,4):tohex(false, ' '))
 	end
 
-	-- handle optional payload. Two cases :
+	-- handle un-parsed payload. Two cases :
 	-- 	- there is 'normal' payload data accounted for by header pkt_len field
 	--	- there is 'extra' payload data, possibly another netdaq frame (unsupported right now)
 	-- not sure if second case can actually happen.
 	if not handler and (payload_len > 0) then
-		--	print(string.format('len: %u, PL_len: %u, ', length, payload_len))
 		subtree:add(payload, buf(16,payload_len))
 		pinfo.cols.info:append(string.format(', pl_len=%u', payload_len))
 	end
@@ -205,7 +233,7 @@ parse_interval = function (intv, subtree, headertext)
 	local m = intv(4,4):uint()
 	local s = intv(8,4):uint()
 	local ms = intv(12,4):uint()
-	subtree:add(interval, intv(0,16)):set_text(headertext .. string.format('%02u:%02u:%02u.%02u', h,m,s,ms))
+	subtree:add(interval, intv(0,16)):set_text(headertext .. string.format('%02u:%02u:%02u.%03u', h,m,s,ms))
 end
 
 
