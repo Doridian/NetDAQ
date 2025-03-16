@@ -192,6 +192,17 @@ Equations
 02 float-20(4B) 01 channel-2(2B) 01 channel-1(2B) 08 0c 07 00
 ```
 
+There are three interval fields with this 16-byte structure :
+```
+struct t_interval {
+    uint32_t hours
+    uint32_t minutes
+    uint32_t sec
+    uint32_t ms
+}; //all big-endian
+```
+
+The entire config block (2492 bytes) is structured thus:
 - Configuration bits 4-byte
     - Last 9 bits, all others 0
         - External trigger
@@ -203,18 +214,11 @@ Equations
         - Fahrenheit (off for Celsius)
         - Fast (set neither for "Slow")
         - Medium (set neither for "Slow")
-- 4-byte UNKNOWN (null)
-- 4-byte UNKNOWN (null)
-- Interval time whole seconds 4-byte
-- Interval time milliseconds 4-byte
-- 4-byte UNKNOWN (null)
-- 4-byte UNKNOWN (null)
-- Alarm time whole seconds 4-byte
-- Alarm time milliseconds 4-byte
-- 4-byte UNKNOWN (null)
-- 4-byte UNKNOWN (null)
-- 4-byte UNKNOWN (null)
-- 4-byte UNKNOWN (0x00 0x00 0x00 0x64)
+- 16 bytes : t_interval interval_T1
+- 16 bytes : t_interval interval_T2
+- 16 bytes : t_interval interval_unknown
+- 48 bytes * 30 channel_config blocks
+
 
 #### Per-channel config
 ```
@@ -246,12 +250,14 @@ Equations
         - 0x00 0x00 0x23 0x08 = 3 V
         - 0x00 0x00 0x24 0x10 = 30 V
         - 0x00 0x00 0x25 0x20 = Auto
-        - 0x00 0x00 0x26 0x40 = 50 V
+        - 0x00 0x00 0x26 0x40 = 50 V (** fluke 2645 only)
+        - 0x00 0x00 0x27 0x40 = 150/300V (** fluke 2640 only)
     - VAC
         - 0x00 0x00 0x30 0x01 = 300 mV
         - 0x00 0x00 0x31 0x02 = 3 V
         - 0x00 0x00 0x32 0x04 = 30 V
         - 0x00 0x00 0x33 0x08 = Auto
+        - 0x00 0x00 0x35 0x10 = 150V (** fluke 2640 only)
     - Ohms 2W
         - 0x00 0x00 0x12 0x04 = 30 kOhm
         - 0x00 0x00 0x13 0x08 = 300 kOhm
