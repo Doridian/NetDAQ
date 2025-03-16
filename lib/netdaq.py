@@ -423,10 +423,9 @@ class NetDAQ:
             pass
 
     async def start(self, start: datetime | None = None) -> None:
-        # TODO: Start does not seem to work just yet
         if start:
             packet = bytes([
-                0x01, 0x00, 0x00, 0x00,
+                0x00, 0x00, 0x00, 0x01,
             ]) + make_time(start) + NULL_INT
         else:
             packet = 4 * NULL_INT

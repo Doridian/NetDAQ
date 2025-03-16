@@ -56,11 +56,11 @@
     ```
     00000CB8  00 00 00 00 ac f4 19 00  58 10 46 00 00 00 00 0d   ........ X.F.....
     ```
-First byte is the bool flag "delayed" ; if 0 : scan begins now (rest of the struct is ignored), if 1, scan begins at specified time (shortened version of struct netdaq_time)
+First uint32 (big-endian) is the bool flag "delayed" ; if 0 : scan begins now (rest of the struct is ignored), if 1, scan begins at specified time (shortened version of struct netdaq_time)
 ```
 struct start_request {
-	u8 delayed_flag;	// 1 if delayed
 	u8 padding[3];	//set to 0
+	u8 delayed_flag;	// 1 if delayed
 
 	u8 hours;
 	u8 minutes;
