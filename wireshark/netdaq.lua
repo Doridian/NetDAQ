@@ -173,16 +173,16 @@ parse_configblock = function (cfg, pinfo, subtree)
 end
 
 -- parse Start request packet
-dis_start = function (request, pinfo, subtree, seqno)
+dis_start = function (request, pinfo, subtree)
 	delayed=request(0,4):uint()
 	if (delayed == 1) then
-		pinfo.cols.info = string.format('seq=%u, DELAYED START @', seqno)
+		pinfo.cols.info:append(" DELAYED START @")
 		subtree:add(delay_start, request(4,-1))
 		parse_timedelay(request(4,-1), pinfo, subtree)
 	elseif (delayed == 0) then
-		pinfo.cols.info = string.format('seq=%u, START', seqno)
+--		pinfo.cols.info:append(' START', seqno)
 	else
-		pinfo.cols.info = string.format('seq=%u, START: UNKNOWN TYPE', seqno)
+		pinfo.cols.info:append(' UNKNOWN TYPE')
 	end	
 end
 
