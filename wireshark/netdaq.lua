@@ -110,14 +110,19 @@ dis = function (buf, pinfo, tree)
 	subtree:add(cmd, buf(8,4)):append_text(string.format(' (%s)', cmd_table[cmd_id_uint] ))
 	subtree:add(pkt_len, buf(12,4))
 
+	local payload_len = pkt_len_uint - 16
 	-- handle a few special messages
 
-	if ((cmd_table[cmd_id_uint] == "ERROR") and (length == 20)) then
+	if ((cmd_table[cmd_id_uint] == "ERROR") and (payload_len == 4)) then
 		local err_code = buf(16,4):uint()
 		pinfo.cols.info = string.format('seq=%u, ERROR:0x%X', seq_id_uint, err_code)
 	end
 
-	if ((cmd_table[cmd_id_uint] == "PING") and (length == 20)) then
+	if ((cmd_table[cmd_id_uint] == "START") and (payload_len == 16)) then
+		dis_start(buf(16, payload_len), pinfo, subtree, seq_id_uint) 
+	end
+
+	if ((cmd_table[cmd_id_uint] == "PING") and (payload_len == 4)) then
 -- XXX this is not strictly correct since some queries could have different meanings for the 4-byte response
 -- XXX but this would be fixed by processing packets as 'conversations' to group query+reply by sequence ID
 		pinfo.cols.info = string.format('seq=%u, STATUS:', seq_id_uint) .. buf:bytes(16,4):tohex(false, ' ')
@@ -128,7 +133,6 @@ dis = function (buf, pinfo, tree)
 	-- 	- there is 'normal' payload data accounted for by header pkt_len field
 	--	- there is 'extra' payload data, possibly another netdaq frame (unsupported right now)
 	-- not sure if second case can actually happen.
-	local payload_len = pkt_len_uint - 16
 	if (payload_len > 0) then
 		--	print(string.format('len: %u, PL_len: %u, ', length, payload_len))
 		subtree:add(payload, buf(16,payload_len))
@@ -140,6 +144,19 @@ dis = function (buf, pinfo, tree)
 	end
 	return length
 end
+
+-- parse Start request packet
+dis_start = function (request, pinfo, subtree, seqno)
+	delayed=request(0,4):uint()
+	if (delayed == 1) then
+		pinfo.cols.info = string.format('seq=%u, DELAYED START @ (TBD)', seqno)
+	elseif (delayed == 0) then
+		pinfo.cols.info = string.format('seq=%u, START', seqno)
+	else
+		pinfo.cols.info = string.format('seq=%u, START: UNKNOWN TYPE', seqno)
+	end	
+end
+
 
 local tcp_port = DissectorTable.get("tcp.port")
 tcp_port:add(4369, netdaq_protocol)
