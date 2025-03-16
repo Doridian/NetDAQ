@@ -43,7 +43,7 @@ dis_cfg = function (cfg, pinfo, subtree)
 	for i=0,2 do
 		parse_interval(cfg(4+(16*i),16), cfg_t, string.format('interval %u: ', i))
 	end
-	for c=0,30 do
+	for c=0,29 do
 		chanblock = cfg(0x34 + (c*0x30), 0x30)
 		local mode=chanblock(0,4):uint()
 		if mode == 0 then
