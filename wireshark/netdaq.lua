@@ -224,7 +224,7 @@ parse_timedelay = function (td, pinfo, subtree)
 	local mo = td(3,1):uint()
 	local d = td(5,1):uint()
 	local y = td(6,1):uint()
-	pinfo.cols.info:append(string.format('%u:%u:%u, %u-%u-%u', h,m,s,y,m,d))
+	pinfo.cols.info:append(string.format('%u:%u:%u, %u-%u-%u', h,m,s,y,mo,d))
 end
 
 -- parse 'interval' field of SET/GET_CONFIG blocks
