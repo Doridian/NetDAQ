@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from lib.netdaq import NetDAQ
+from netdaq.netdaq import NetDAQ
 from sys import argv
 from asyncio import run
 

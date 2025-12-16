@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 
-from lib.netdaq import NetDAQ
-from lib.config.instrument import DAQConfiguration, DAQConfigTrigger
-from lib.config.enums import *
-from lib.config.channels.analog import *
-from lib.config.channels.computed import *
-from lib.config.equation import DAQEquation
-from lib.config.equation_compiler import DAQEQuationCompiler
-from sys import argv
+from netdaq.netdaq import NetDAQ
+from netdaq.config.instrument import DAQConfiguration, DAQConfigTrigger
+from netdaq.config.enums import *
+from netdaq.config.channels.analog import *
+from netdaq.config.channels.computed import *
+from netdaq.config.equation import DAQEquation
+from netdaq.config.equation_compiler import DAQEQuationCompiler
 from asyncio import run, sleep
 from datetime import datetime, timedelta
+from argparse import ArgumentParser
 
 
 async def main3():
@@ -24,7 +24,12 @@ async def main2():
 
 
 async def main():
-    instrument = NetDAQ(ip=argv[1], port=4369)
+    parser = ArgumentParser(description="NetDAQ Control Utility")
+    _ = parser.add_argument("--port", type=int, default=4369, help="Port number of the NetDAQ instrument (default: 4369)")
+    _ = parser.add_argument("ip", help="IP address of the NetDAQ instrument")
+    args = parser.parse_args()
+
+    instrument = NetDAQ(ip=args.ip, port=args.port)
     await instrument.connect()
 
     try:
