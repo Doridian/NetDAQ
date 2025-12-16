@@ -4,11 +4,11 @@
 
 This library is undergoing heavy development at the moment and ease of use will be a focus once the whole protocol has been implemented
 
-For now, check out [`main.py`](main.py). For running, this requires the instrument's IP as the first argument.
+For now, check out [`netdaq/__main__.py`](netdaq/__main__.py). For running, this requires the instrument's IP as the first argument.
 
 ## Reporting issues
 
-Whenever reporting an issue, please add the output of `python3 info.py INSTRUMENT_IP` to your issue.
+Whenever reporting an issue, please add the output of `python3 netdaq --info INSTRUMENT_IP` to your issue.
 
 ## Instrument manuals
 

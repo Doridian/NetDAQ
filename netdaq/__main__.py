@@ -27,10 +27,27 @@ async def main():
     parser = ArgumentParser(description="NetDAQ Control Utility")
     _ = parser.add_argument("--port", type=int, default=4369, help="Port number of the NetDAQ instrument (default: 4369)")
     _ = parser.add_argument("ip", help="IP address of the NetDAQ instrument")
+    _ = parser.add_argument("--info", action="store_true", help="Only display instrument info and exit")
     args = parser.parse_args()
 
     instrument = NetDAQ(ip=args.ip, port=args.port)
     await instrument.connect()
+
+    if args.info:
+        print("===== BEGIN INFO =====")
+        try:
+            print("Constructor:", "OK")
+
+            await instrument.connect()
+            print("Connect:", "OK")
+
+            await instrument.ping()
+            print("Ping:", "OK")
+
+            print("Base channel:", await instrument.get_base_channel())
+            print("Version info:", await instrument.get_version_info())
+        finally:
+            print("====== END INFO ======")
 
     try:
         await instrument.ping()
