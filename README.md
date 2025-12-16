@@ -8,7 +8,7 @@ For now, check out [`netdaq/__main__.py`](netdaq/__main__.py). For running, this
 
 ## Reporting issues
 
-Whenever reporting an issue, please add the output of `python3 netdaq --info INSTRUMENT_IP` to your issue.
+Whenever reporting an issue, please add the output of `python3 -m netdaq --info INSTRUMENT_IP` to your issue.
 
 ## Instrument manuals
 
