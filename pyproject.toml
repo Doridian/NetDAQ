@@ -21,4 +21,4 @@ build-backend = "hatchling.build"
 packages = ["netdaq"]
 
 [project.scripts]
-netdaq = "netdaq.__main__:main"
+netdaq = "main:main"
