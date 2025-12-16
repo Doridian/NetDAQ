@@ -22,11 +22,3 @@ packages = ["netdaq"]
 
 [project.scripts]
 netdaq = "netdaq.__main__:main"
-
-[tool.uv.extra-build-dependencies]
-pystemd = ["setuptools"]
-
-[dependency-groups]
-dev = [
-    "setuptools>=80.9.0",
-]
